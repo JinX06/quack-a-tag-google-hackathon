@@ -31,15 +31,14 @@ function onHelpAction(e) {
     .addSection(CardService.newCardSection()
       .addWidget(CardService.newTextButton()
         .setText(buttonText)
-        .setOnClickAction(CardService.newAction().setFunctionName('onLibraryPage').setParameters({update: 'true'}))
+        .setOnClickAction(welcome
+          ? CardService.newAction().setFunctionName('onLibraryPage').setParameters({update: 'true'})
+          : CardService.newAction().setFunctionName('goPrevPage'))
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
         .setBackgroundColor('#ffaf51')) // Background color for filled style
     );
 
 
-  if (!welcome) {
-    return  CardService.newNavigation().updateCard(card.build())
-  }
 
   return card.build();
 }
