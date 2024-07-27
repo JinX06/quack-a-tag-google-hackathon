@@ -187,16 +187,6 @@ function addTagToDb(e) {
 
 
 
-function editTagLibrary() {
-  const card = CardService.newCardBuilder()
-    .addSection(CardService.newCardSection()
-      .addWidget(CardService.newTextParagraph().setText('Test edit Card')))
-    .build();
-
-  return card;
-}
-
-
 
 /**
  * File Search Page
