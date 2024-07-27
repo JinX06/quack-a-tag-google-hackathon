@@ -56,17 +56,6 @@ function onInstall(e) {
 
 
 
-/**
- * The function to run when the homepage is opened.
- */
-function onHomepage() {
-  // If no tags added to library before, show welcome page
-    if(getAllTagsName().length>0){
-      return onLibraryPage ();
-    } else {
-      return onHelpAction({parameters: {welcome: 'true'}});
-    }
-}
 
 /**
  * The function to run when the library page is opened.
