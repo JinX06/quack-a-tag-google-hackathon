@@ -858,6 +858,14 @@ function hash(input) {
   return hash;
 }
 
+/**
+ * This is a back fucntion, allow user to go back to prev page
+ */
+function goPrevPage() {
+  return CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().popCard())
+    .build();
+}
 
 function onItemsSelected(e) {
   Logger.log(JSON.stringify(e));
