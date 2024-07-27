@@ -347,7 +347,7 @@ function removeTagsFromUserFiles(tagsId) {
 }
 
 function renameTagLibraryPage(){
-  
+
 }
 
 /**
@@ -408,12 +408,13 @@ function onManagePage(selectedItems, isEditMode=false) {
     
   if (selectedItems.length == 1) {
     var sections = manageSelectOne(selectedItems,isEditMode);
-    sections.forEach(function(section) {
+  } else {
+    var sections = manageSelectMultiple(selectedItems,isEditMode);
+  }
+
+  sections.forEach(function(section) {
       managePage.addSection(section);
     });
-  } else {
-    managePage.addSection(manageSelectMultiple(selectedItems));
-  }
 
   return managePage.build();
 }
@@ -551,14 +552,17 @@ function manageSelectOne(selectedItems, isEditMode){
 
 
   var tagManageTitle = CardService.newCardSection()
-    .addWidget(tagsTitle);
+    .addWidget (spacing)
+    .addWidget (spacing)
+    .addWidget(tagsTitle)
+    .addWidget (spacing);
   
-  Logger.log("taglist: "+ tagList)
+
   if (!empty){
     tagManageTitle.addWidget(tagList);
   }
   else {
-    Logger.log('emptyTag')
+
     tagManageTitle.addWidget(emptyTag);
   }
     
@@ -575,7 +579,7 @@ function manageSelectOne(selectedItems, isEditMode){
 function manageSelectMultiple(selectedItems){
 
   // Create the button
-  var editNautoTagBtn = CardService.newButtonSet()
+  var actionButtonSet = CardService.newButtonSet()
     .addButton(CardService.newTextButton()
       .setText("Edit...✏️")
       .setOnClickAction(CardService.newAction().setFunctionName('editTagMutliple'))
@@ -588,12 +592,102 @@ function manageSelectMultiple(selectedItems){
       .setBackgroundColor('#635A7A')); // Background color for filled style
 
     
-  // Display all component
-  var section = CardService.newCardSection()
-    .addWidget(editNautoTagBtn)
+ 
+  // Add Tag Input
+  var addTagInput = CardService.newTextInput()
+    .setFieldName('addNewTagOneFileInput')
+    .setTitle("Add Tag to File ➕")
+    .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
+  
 
-  return section
+  // Set suggestions only if there are tags in library
+  var allTags = getAllTagsName();
+  if (allTags.length>0){
+    addTagInput.setSuggestions(suggestTags(allTags))
+  }
+
+
+  // Add Tag Button
+  var addTagButton = CardService.newTextButton()
+    .setText('Confirm')
+    .setOnClickAction(CardService.newAction()
+      .setFunctionName('addNewTagFile')
+      .setParameters({ selectedItems: JSON.stringify(selectedItems) }))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
+      .setBackgroundColor('#ffaf51'); // Background color for filled style
+
+
+  // Display Tags & Number of file selected
+  var tagsTitle = CardService.newGrid()
+    .setNumColumns(1)
+    .addItem(CardService.newGridItem()
+        .setTitle('Shared Tags 🏷️') 
+        .setSubtitle(`${selectedItems.length} files selected.`));
+
+  var sharedTags =getSharedTags (selectedItems);
+
+  Logger.log(sharedTags)
+
+  var tagList = CardService.newButtonSet();
+    if (sharedTags.length > 0) {
+      var sortedTags = getSortedTags(sharedTags);
+      sortedTags.forEach(tag => {
+        tagList.addButton(CardService.newTextButton()
+          .setText(tag.name)
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
+          .setBackgroundColor('#8A4B3C') // Background color for filled style
+          .setOnClickAction(CardService.newAction().setFunctionName('nothing')));
+      });
+    }
+
+
+  // Manage One Display
+  var headerManage = CardService.newCardSection()
+    .addWidget(actionButtonSet);
+
+
+  var addTagSection = CardService.newCardSection()
+    .addWidget(addTagInput)
+    .addWidget(addTagButton)
+    .addWidget(spacing);
+
+
+  var tagSection = CardService.newCardSection()
+    .addWidget(tagsTitle)
+    .addWidget(tagList);
+  
+
+
+  // Return the sections as an array
+  return [headerManage, addTagSection, tagSection, spacer];
 }
+
+/**
+ * The function to display get the shared tag id .
+ */
+function getSharedTags(selectedItems) {
+  // Create an array to store tags for each file
+  let tagsArrays = [];
+  
+  // Get tags for each selected file
+  selectedItems.forEach(file => {
+    let fileTagsData = getFileTagsDataById(file.id);
+    
+    if (fileTagsData && fileTagsData.tags) {
+      tagsArrays.push(fileTagsData.tags);
+    }
+  });
+
+  // Find shared tags
+  if (tagsArrays.length === 0) return []; // No files or no tags in files
+
+  // Find intersection of all tag arrays
+  let sharedTags = tagsArrays.reduce((acc, tags) => {
+    return acc.filter(tag => tags.includes(tag));
+  });
+
+  return sharedTags;
+} 
 
 
 
