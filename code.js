@@ -311,27 +311,39 @@ function removeTagsFromUserFiles(tagsId) {
 
     userFileTags.forEach(([key, fileData]) => {
       const updatedTags = fileData.tags.filter(tagId => !tagsId.includes(tagId));
-      const updatedFileData = {
-        fileid: fileData.fileid,
-        gmail: fileData.gmail,
-        tags: updatedTags
-      };
+
       
-      const updateUrl = `${FIREBASE_URL}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
-      const options = {
-        method: 'PUT',
-        contentType: 'application/json',
-        payload: JSON.stringify(updatedFileData)
-      };
+      // Check if updatedTags is empty, if so, delete the document
+      if (updatedTags.length === 0) {
+        var deleteUrl = `${FIREBASE_URL}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
+        var deleteOptions = {
+          method: 'DELETE'
+        };
 
-      UrlFetchApp.fetch(updateUrl, options);
+        UrlFetchApp.fetch(deleteUrl, deleteOptions);
+      } 
+      // Update the database with the new list of tags
+      else{
+        var updatedData = {
+              fileid: hash(fileId),
+              gmail: email,
+              tags: updatedTags
+            };
 
-      return true; //indicate success
+            var url = `${FIREBASE_URL}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
+            var options = {
+              method: 'PUT',
+              contentType: 'application/json',
+              payload: JSON.stringify(updatedData)
+            };
+
+            UrlFetchApp.fetch(url, options);
+      }
+
     });
     
   } catch (e) {
     Logger.log('Error removing tags from files: ' + e.toString());
-    return false; //indicate failure
   }
 }
 
