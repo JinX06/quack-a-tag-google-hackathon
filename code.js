@@ -187,7 +187,7 @@ function addTagToDb(e) {
 
   return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText(add? newTag + "has been added to Your Library." : newTag + " already exists in Your Library"))
+        .setText(add? newTag + " has been added to Your Library." : newTag + " already exists in Your Library"))
       .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
       .build();
 
