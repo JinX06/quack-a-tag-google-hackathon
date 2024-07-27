@@ -61,7 +61,7 @@ function onInstall(e) {
  */
 function onHomepage() {
   // If no tags added to library before, show welcome page
-    if(getAllTags().length>0){
+    if(getAllTagsName().length>0){
       return onLibraryPage ();
     } else {
       return onHelpAction({parameters: {welcome: 'true'}});
@@ -73,7 +73,7 @@ function onHomepage() {
  */
 function onHomepage() {
   // If no tags added to library before, show welcome page
-    if(getAllTags().length>0){
+    if(getAllTagsName().length>0){
       return onLibraryPage ();
     } else {
       return onHelpAction({parameters: {welcome: 'true'}});
@@ -126,7 +126,7 @@ function onLibraryPage(e){
 
     // Display the tag list
     var tagList;
-    var allTags = getAllTags();
+    var allTags = getAllTagsName();
     if (allTags.length>0){
       tagList = CardService.newButtonSet();
       allTags.forEach(function(tag) {
@@ -201,7 +201,7 @@ function onSearchPage() {
     .setHint(' "E.g. PDF, Budget, Sales..." ');
   
   // Set suggestions only if there are tags in library
-  var allTags = getAllTags();
+  var allTags = getAllTagsName();
   if (allTags.length>0){
     fileSearchInput.setSuggestions(suggestTags(allTags))
   }
@@ -303,7 +303,7 @@ function manageSelectOne(selectedItems, isEditMode){
   
 
   // Set suggestions only if there are tags in library
-  var allTags = getAllTags();
+  var allTags = getAllTagsName();
   if (allTags.length>0){
     addTagInput.setSuggestions(suggestTags(allTags))
   }
@@ -497,7 +497,7 @@ function getSortedTags(tagIds) {
  * Function to retrieve all tags from Firebase Realtime Database for the current user.
  * Return all tags that match the user's email.
  */
-function getAllTags() {
+function getAllTagsName() {
   const url = `${FIREBASE_URL}/tags.json?auth=${FIREBASE_SECRET}`;
 
   try {
