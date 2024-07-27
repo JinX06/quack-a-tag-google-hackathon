@@ -202,7 +202,7 @@ function removeTagLibraryPage(){
           .setText("Cancel ❌")
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
           .setBackgroundColor('#f0831d') 
-          .setOnClickAction(CardService.newAction().setFunctionName('goPrevPage')))
+          .setOnClickAction(CardService.newAction().setFunctionName('onLibraryPage').setParameters({update: 'true'})))
         .addButton(CardService.newTextButton()
           .setText("Remove ❌")
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
