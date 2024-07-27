@@ -346,6 +346,10 @@ function removeTagsFromUserFiles(tagsId) {
   }
 }
 
+function renameTagLibraryPage(){
+  
+}
+
 /**
  * This is a back fucntion, allow user to go back to prev page
  */
