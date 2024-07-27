@@ -72,12 +72,13 @@ function onHomepage() {
 /**
  * The function to run when the library page is opened.
  */
-function onLibraryPage(e){
-  var homePage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Your Library 📖"))
+function onLibraryPage(e, isEditMode = false){
+  Logger.log(isEditMode)
+  var libraryPage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Your Library 📖"))
     var headerSet = CardService.newButtonSet()
       .addButton(CardService.newTextButton()
-        .setText('Edit...✏️')
-        .setOnClickAction(CardService.newAction().setFunctionName('editTagLibrary'))
+        .setText(isEditMode? "Done ✅":'Edit...✏️') //If is edit mode, it change to done
+        .setOnClickAction(CardService.newAction().setFunctionName('changeEditModeLibrary').setParameters({ isEditMode:isEditMode.toString() }))
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
         .setBackgroundColor('#5B7F98')) // Background color for filled style
       .addButton(CardService.newTextButton()
@@ -166,6 +167,7 @@ function onLibraryPage(e){
     }
     return libraryPage.build();
 }
+
 
 
 /**
