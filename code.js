@@ -494,8 +494,8 @@ function getSortedTags(tagIds) {
 
 
 /**
- * Function to retrieve all tags from Firebase Realtime Database for the current user.
- * Return all tags that match the user's email.
+ * Function to retrieve all tags name from Firebase Realtime Database for the current user.
+ * Return all tag names that match the user's email.
  */
 function getAllTagsName() {
   const url = `${FIREBASE_URL}/tags.json?auth=${FIREBASE_SECRET}`;
