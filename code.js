@@ -71,6 +71,18 @@ function onHomepage() {
 /**
  * The function to run when the library page is opened.
  */
+function onHomepage() {
+  // If no tags added to library before, show welcome page
+    if(getAllTags().length>0){
+      return onLibraryPage ();
+    } else {
+      return onHelpAction({parameters: {welcome: 'true'}});
+    }
+}
+
+/**
+ * The function to run when the library page is opened.
+ */
 function onLibraryPage(e){
   var homePage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Your Library 📖"))
     var headerSet = CardService.newButtonSet()
@@ -98,9 +110,10 @@ function onLibraryPage(e){
       .addWidget(spacing)
       .addWidget(spacing)
       .addWidget(textInput)
+      // Add Tag Button
       .addWidget(CardService.newTextButton()
         .setText('Confirm')
-        .setOnClickAction(CardService.newAction().setFunctionName('ConfirmTag'))
+        .setOnClickAction(CardService.newAction().setFunctionName('addTagToDb'))
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
         .setBackgroundColor('#ffaf51')) // Custom color for the button
       .addWidget(spacing);
@@ -111,12 +124,27 @@ function onLibraryPage(e){
       .addWidget(CardService.newTextParagraph()
         .setText('Tags 🏷️'));
 
+    // Display the tag list
+    var tagList;
+    var allTags = getAllTags();
+    if (allTags.length>0){
+      tagList = CardService.newButtonSet();
+      allTags.forEach(function(tag) {
+        tagList.addButton(CardService.newTextButton()
+            .setText(tag)
+            .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
+            .setBackgroundColor('#8A4B3C') // Background color for filled style
+            .setOnClickAction(CardService.newAction().setFunctionName('nothing')));
+      })
+    }
+    // Show message if no tags
+    else {
+      tagList = CardService.newTextParagraph().setText('Add your first tag!');
+    }
 
     // Add Tags Display's section
     var libraryTagsContent = CardService.newCardSection()
-      .addWidget(CardService.newTextParagraph()
-        .setText('Your created Tags will show up here'))
-    // .addWidget(tagButtons);
+      .addWidget(tagList);
 
 
     // Add above sections to home page
@@ -134,11 +162,27 @@ function onLibraryPage(e){
 }
 
 
+/**
+ * The function is to add the new tag into library/collection
+ */
+function addTagToDb(e) {
+  // return error message if new tag name is not enter
+  if (!e.formInputs.new_tag){
+    return CardService.newActionResponseBuilder()
+          .setNotification(CardService.newNotification()
+            .setText('Please enter the tag name.'))
+          .build();
+  }
 
-function saveSampleText(e) {
-  const sampleText = e.formInput.sampleText;
-  const selectedItems = e.drive.selectedItems;
-  Logger.log(JSON.stringify(sampleText))
+  var newTag = e.formInput.new_tag.trim();
+  var add = addTagIfNotExists(newTag); // return true if the tag has successfully added
+
+  return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText(add? newTag + "has been added to Your Library." : newTag + " already exists in Your Library"))
+      .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
+      .build();
+
 }
 
 
