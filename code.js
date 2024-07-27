@@ -752,6 +752,16 @@ function changeEditModeFile(e) {
     .build();
 }
 
+/**
+ * This function change the edit mode in the library page.
+ */
+function changeEditModeLibrary(e) {
+  var isEditMode = !(e.parameters.isEditMode === 'true'); //if edit mode is false become true
+Logger.log(isEditMode)
+  return CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().updateCard(onLibraryPage(e, isEditMode)))
+    .build();
+}
 
 /**
  * Remove tags from a file.
