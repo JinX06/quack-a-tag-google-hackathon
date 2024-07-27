@@ -1073,7 +1073,6 @@ function hash(input) {
 
 
 function onItemsSelected(e) {
-  Logger.log(JSON.stringify(e));
 
   var selectedItems = e.drive.selectedItems;
 
@@ -1083,9 +1082,11 @@ function onItemsSelected(e) {
     return onLibraryPage();
   }
   
-  return onManagePage(selectedItems);
+  // return onManagePage(selectedItems);
+  return CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().updateCard(onManagePage(selectedItems)))
+    .build();
 }
-
 
 function showAddLabelCard() {}
 
