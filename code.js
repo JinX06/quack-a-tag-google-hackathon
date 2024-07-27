@@ -1,7 +1,6 @@
 const FIREBASE_URL = FirebaseInfo.getFIREBASE_URL(); // or Firestore URL
 const FIREBASE_SECRET = FirebaseInfo.getFIREBASE_SECRET(); // or API key if using Firestore
 const email = Session.getActiveUser().getEmail(); // user email
-console.log(email)
 
 //Layout Design
 var spacing = CardService.newTextParagraph().setText(' ');
@@ -32,7 +31,7 @@ function onHelpAction(e) {
     .addSection(CardService.newCardSection()
       .addWidget(CardService.newTextButton()
         .setText(buttonText)
-        .setOnClickAction(CardService.newAction().setFunctionName('onLibraryPage').setParameters({fromOnHelpAction: 'true'}))
+        .setOnClickAction(CardService.newAction().setFunctionName('onLibraryPage').setParameters({update: 'true'}))
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
         .setBackgroundColor('#ffaf51')) // Background color for filled style
     );
@@ -56,9 +55,8 @@ function onInstall(e) {
 
 
 
-
 /**
- * The function to run when the library page is opened.
+ * The function to run when the homepage is opened.
  */
 function onHomepage() {
   // If no tags added to library before, show welcome page
@@ -73,7 +71,7 @@ function onHomepage() {
  * The function to run when the library page is opened.
  */
 function onLibraryPage(e, isEditMode = false){
-  Logger.log(isEditMode)
+
   var libraryPage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Your Library 📖"))
     var headerSet = CardService.newButtonSet()
       .addButton(CardService.newTextButton()
@@ -162,12 +160,11 @@ function onLibraryPage(e, isEditMode = false){
     libraryPage.addSection(libraryTagsContent);
 
   // If from Welcome/Help page, update the page, instead create
-    if (e && e.parameters && e.parameters.fromOnHelpAction) {
+    if (e && e.parameters && e.parameters.update ) {
       return  CardService.newNavigation().updateCard(libraryPage.build())
     }
     return libraryPage.build();
 }
-
 
 
 /**
@@ -225,7 +222,6 @@ function removeTagLibraryPage(){
   if (tagData) {
     tagData.forEach(function(tag) {
       tagList.addItem(tag.name, JSON.stringify({ id: tag.id, name: tag.name }), false);
-      Logger.log(`Tag Details (${tag.name}):  ${tag.id}\n`)
     });
   }
 
@@ -240,9 +236,114 @@ function removeTagLibraryPage(){
   // Display all section
   removeTagLibraryPage.addSection(actionBtnsSection).addSection(tagSection);
 
-  return removeTagLibraryPage.build();
+  return CardService.newNavigation().updateCard(removeTagLibraryPage.build());
 
 }
+
+/**
+ * Function to remove tag from Tags db and FileTag db
+ */
+function removeTag (e){
+  // Check if any tags are selected for removal
+  if (!e.formInputs.tagsToRemove) {
+    return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText('Please select at least tag to remove.'))
+      .build();
+  }
+
+  // Extract id and name
+  var tagsId = e.formInputs.tagsToRemove.map(tag => JSON.parse(tag).id);
+  var tagsName = e.formInputs.tagsToRemove.map(tag => JSON.parse(tag).name);
+
+
+  // Remove tags from the Tag database
+  tagsId.forEach(id =>{
+    removeTagFromTagDB(id);
+  });
+
+
+// Remove tags for every files
+  removeTagsFromUserFiles(tagsId);
+
+
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification()
+      .setText(`${tagsName.join(', ')} have been removed.`))
+    .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
+    .build();
+}
+
+/**
+ * Function to remove tag from the Tag database
+ */
+function removeTagFromTagDB(tagId) {
+  const url = `${FIREBASE_URL}/tags/${tagId}.json?auth=${FIREBASE_SECRET}`;
+  
+  try {
+    const options = {
+      method: 'DELETE'
+    };
+    UrlFetchApp.fetch(url, options);
+    return true; //indicate success
+
+  } catch (e) {
+    Logger.log('Error removing tag: ' + e.toString());
+    return false; //indicate failure
+  }
+}
+
+/**
+ * Function to remove tags from all the user's files
+ * @param - list of tag id
+ */
+function removeTagsFromUserFiles(tagsId) {
+  const url = `${FIREBASE_URL}/fileTags.json?auth=${FIREBASE_SECRET}`;
+  
+  try {
+    const response = UrlFetchApp.fetch(url, {
+      method: 'GET',
+      contentType: 'application/json'
+    });
+    
+    const fileTagsData = JSON.parse(response.getContentText());
+    const userFileTags = Object.entries(fileTagsData).filter(([key, value]) => value.gmail === email);
+
+    userFileTags.forEach(([key, fileData]) => {
+      const updatedTags = fileData.tags.filter(tagId => !tagsId.includes(tagId));
+      const updatedFileData = {
+        fileid: fileData.fileid,
+        gmail: fileData.gmail,
+        tags: updatedTags
+      };
+      
+      const updateUrl = `${FIREBASE_URL}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
+      const options = {
+        method: 'PUT',
+        contentType: 'application/json',
+        payload: JSON.stringify(updatedFileData)
+      };
+
+      UrlFetchApp.fetch(updateUrl, options);
+
+      return true; //indicate success
+    });
+    
+  } catch (e) {
+    Logger.log('Error removing tags from files: ' + e.toString());
+    return false; //indicate failure
+  }
+}
+
+/**
+ * This is a back fucntion, allow user to go back to prev page
+ */
+function goPrevPage() {
+  return CardService.newActionResponseBuilder()
+    .setNavigation(CardService.newNavigation().popCard())
+    .build();
+}
+
 
 /**
  * File Search Page
@@ -597,6 +698,8 @@ function getAllTagsName() {
 }
 
 
+
+
 /**
  * Function to display the suggestions
  * @param - tags: List of tag 
@@ -733,7 +836,6 @@ function addTagIfNotExists(tagName) {
   }
 }
 
-
 /**
  * This function do nothing is to handle tag display
  */
@@ -762,6 +864,7 @@ Logger.log(isEditMode)
     .setNavigation(CardService.newNavigation().updateCard(onLibraryPage(e, isEditMode)))
     .build();
 }
+
 
 /**
  * Remove tags from a file.
@@ -846,6 +949,7 @@ function removeFileTag(e) {
 }
 
 
+
 /**
  * Hashes using SHA-256.
  */
@@ -858,14 +962,6 @@ function hash(input) {
   return hash;
 }
 
-/**
- * This is a back fucntion, allow user to go back to prev page
- */
-function goPrevPage() {
-  return CardService.newActionResponseBuilder()
-    .setNavigation(CardService.newNavigation().popCard())
-    .build();
-}
 
 function onItemsSelected(e) {
   Logger.log(JSON.stringify(e));
@@ -880,6 +976,7 @@ function onItemsSelected(e) {
   
   return onManagePage(selectedItems);
 }
+
 
 function showAddLabelCard() {}
 
