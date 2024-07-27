@@ -132,22 +132,39 @@ function onLibraryPage(e){
     }
 
     // Add Tags Display's section
-    var libraryTagsContent = CardService.newCardSection()
-      .addWidget(tagList);
+    var libraryTagsContent = CardService.newCardSection();
 
+    // Create rename and remove button if is in edit mode
+    if (isEditMode){
+      var editButtons = CardService.newButtonSet()
+        .addButton(CardService.newTextButton()
+          .setText("Rename ✍🏼")
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+          .setBackgroundColor('#e6a902') 
+          .setOnClickAction(CardService.newAction().setFunctionName('renameTagLibraryPage')))
+        .addButton(CardService.newTextButton()
+          .setText("Remove ❌")
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+          .setBackgroundColor('#F68888') 
+          .setOnClickAction(CardService.newAction().setFunctionName('removeTagLibraryPage')));
+
+        libraryTagsContent.addWidget(editButtons).addWidget(spacing).addWidget(spacing);
+    }
+
+    libraryTagsContent.addWidget(tagList);
 
     // Add above sections to home page
-    homePage.addSection(libraryHeader);
-    // homePage.addSection(spacer);
-    homePage.addCardAction(cardHelpAction);
-    homePage.addSection(libraryTagsTitle);
-    homePage.addSection(libraryTagsContent);
+    libraryPage.addSection(libraryHeader);
+    // libraryPage.addSection(spacer);
+    libraryPage.addCardAction(cardHelpAction);
+    libraryPage.addSection(libraryTagsTitle);
+    libraryPage.addSection(libraryTagsContent);
 
-  // If from Welcome page, update the page, instead create
-    if (e && e.parameters.fromOnHelpAction) {
-      return  CardService.newNavigation().updateCard(homePage.build())
+  // If from Welcome/Help page, update the page, instead create
+    if (e && e.parameters && e.parameters.fromOnHelpAction) {
+      return  CardService.newNavigation().updateCard(libraryPage.build())
     }
-    return homePage.build();
+    return libraryPage.build();
 }
 
 
@@ -174,8 +191,56 @@ function addTagToDb(e) {
 
 }
 
+/**
+ * The function is to display remove tag page
+ */
+function removeTagLibraryPage(){
+  var removeTagLibraryPage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Remove Tag From Library 📖"))
 
+  // Cancel and Remove buttons
+  var actionBtns = CardService.newButtonSet()
+        .addButton(CardService.newTextButton()
+          .setText("Cancel ❌")
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+          .setBackgroundColor('#f0831d') 
+          .setOnClickAction(CardService.newAction().setFunctionName('goPrevPage')))
+        .addButton(CardService.newTextButton()
+          .setText("Remove ❌")
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+          .setBackgroundColor('#F68888') 
+          .setOnClickAction(CardService.newAction().setFunctionName('removeTag')));
+  
+  // Tag Title
+  var libraryTagsTitle = CardService.newTextParagraph().setText('Tags 🏷️')
 
+  // Checkbox to select remove
+  var tagData = getAllTagsData ();
+  Logger.log(tagData)
+  var tagList = CardService.newSelectionInput()
+      .setType(CardService.SelectionInputType.CHECK_BOX)
+      .setFieldName('tagsToRemove');
+      
+  if (tagData) {
+    tagData.forEach(function(tag) {
+      tagList.addItem(tag.name, JSON.stringify({ id: tag.id, name: tag.name }), false);
+      Logger.log(`Tag Details (${tag.name}):  ${tag.id}\n`)
+    });
+  }
+
+  // Add into Section
+  var actionBtnsSection = CardService.newCardSection()
+    .addWidget(actionBtns);
+
+  var tagSection = CardService.newCardSection()
+    .addWidget(libraryTagsTitle)
+    .addWidget(tagList);
+     
+  // Display all section
+  removeTagLibraryPage.addSection(actionBtnsSection).addSection(tagSection);
+
+  return removeTagLibraryPage.build();
+
+}
 
 /**
  * File Search Page
@@ -481,12 +546,10 @@ function getSortedTags(tagIds) {
 }
 
 
-
 /**
- * Function to retrieve all tags name from Firebase Realtime Database for the current user.
- * Return all tag names that match the user's email.
+ * Function to retrieve all tag data from Firebase Realtime Database for the current user.
  */
-function getAllTagsName() {
+function getAllTagsData(){
   const url = `${FIREBASE_URL}/tags.json?auth=${FIREBASE_SECRET}`;
 
   try {
@@ -497,23 +560,39 @@ function getAllTagsName() {
 
     const data = JSON.parse(response.getContentText());
 
+    // Filter tags for the current user
     const userTags = [];
-    for (const tagId in data) {
-      if (data[tagId].gmail === email) {
-        userTags.push(data[tagId].name);
+    for (const key in data) {
+      if (data[key].gmail === email) {
+        userTags.push({ id: key, name: data[key].name });
       }
     }
 
-    // Sort the tags in ascending order
-    userTags.sort();
+    // Sort tags by name
+    userTags.sort((a, b) => a.name.localeCompare(b.name));
 
     return userTags;
-  } catch (e) {
-    Logger.log('Error fetching tags: ' + e.toString());
-    return [];
+
+    } catch (e) {
+      Logger.log('Error fetching tags: ' + e.toString());
+      return [];
   }
 }
 
+/**
+ * Function to retrieve all tags name from Firebase Realtime Database for the current user.
+ * Return all tag names that match the user's email.
+ */
+function getAllTagsName() {
+  var data = getAllTagsData();
+
+  const userTags = Object.values(data).map(tag => tag.name);
+
+  // Sort the tags in ascending order
+  userTags.sort();
+
+  return userTags;
+}
 
 
 /**
