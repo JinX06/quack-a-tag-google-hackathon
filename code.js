@@ -1350,12 +1350,33 @@ function confirmSearch(e) {
     });
     
     // Create a card section and add the ButtonSet to it
-    var section = CardService.newCardSection()
+    var resultsSection = CardService.newCardSection()
+      .addWidget(spacing)
+      .addWidget(CardService.newTextParagraph().setText('Search Results 🔎'))
+      .addWidget(spacing)
       .addWidget(buttonSet);
     
-    // Return the card with the section
-    return CardService.newCardBuilder()
-      .addSection(section)
+    // Update the existing card with the results
+    var updatedCard = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("File Search 🔎"))
+      .addSection(CardService.newCardSection()
+        .addWidget(spacing)
+        .addWidget(CardService.newTextInput()
+          .setFieldName('file_search')
+          .setTitle("Insert tags to search for files 🏷️")
+          .setHint(' "E.g. T, Budget, Sales..." ')
+          .setValue(e.formInputs.file_search[0])
+          .setSuggestions(suggestTags(getAllTagsName())))
+        .addWidget(CardService.newTextButton()
+          .setText('Confirm')
+          .setOnClickAction(CardService.newAction().setFunctionName('confirmSearch'))
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+          .setBackgroundColor('#ffaf51'))
+          .addWidget(spacing))
+      .addSection(resultsSection)
+      .build();
+
+    return CardService.newActionResponseBuilder()
+      .setNavigation(CardService.newNavigation().updateCard(updatedCard))
       .build();
 }
 
