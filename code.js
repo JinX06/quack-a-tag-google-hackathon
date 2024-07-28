@@ -1,6 +1,10 @@
 const FIREBASE_URL = FirebaseInfo.getFIREBASE_URL(); // or Firestore URL
 const FIREBASE_SECRET = FirebaseInfo.getFIREBASE_SECRET(); // or API key if using Firestore
+const GEMINIENDPOINT = FirebaseInfo.getGEMINI_ENDPOINT(); // API endpoint for Gemini
+const IMGBBAPIKEY = FirebaseInfo.getIMGBBAPIKEY(); // ImageBB API key
 const email = Session.getActiveUser().getEmail(); // user email
+
+// console.log(GEMINIENDPOINT)
 
 //Layout Design
 var spacing = CardService.newTextParagraph().setText(' ');
@@ -467,7 +471,33 @@ function manageSelectOne(selectedItems, isEditMode){
     
 
   // Display Image
-  var imagelink = file.iconUrl;
+  
+  var imagelink = file.iconUrl; // Default to icon if thumbnail is not available
+  const thumbnailBlob = DriveApp.getFileById(file.id).getThumbnail();
+  if (thumbnailBlob) {
+    try {
+      const base64Image = Utilities.base64Encode(thumbnailBlob.getBytes());
+      const payload = {
+        key: IMGBBAPIKEY,
+        image: base64Image,
+        expiration: 60
+      };
+  
+      const options = {
+        method: 'POST',
+        contentType: 'application/x-www-form-urlencoded',
+        payload: payload
+      };
+  
+      const response = UrlFetchApp.fetch('https://api.imgbb.com/1/upload', options);
+      const jsonResponse = JSON.parse(response.getContentText());
+      imagelink = jsonResponse.data.url;
+    } catch (e) {
+      Logger.log('Error uploading image to ImageBB: ' + e.message);
+    }
+  }
+  Logger.log(imagelink);
+
   var imageWidget = CardService.newImage()
     .setImageUrl(imagelink)
     .setAltText(file.title);
@@ -605,7 +635,7 @@ function manageSelectMultiple(selectedItems, isEditMode){
   if (!isEditMode){
     actionButtonSet.addButton(CardService.newTextButton()
       .setText("Auto Tag ✨")
-      .setOnClickAction(CardService.newAction().setFunctionName('autoTagOne'))
+      .setOnClickAction(CardService.newAction().setFunctionName('autoTagMultiple')) // Function to be added later
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
       .setBackgroundColor(isEditMode ? '#F68888' :'#635A7A')); 
   } else{
@@ -1332,6 +1362,126 @@ function removeFileDetailsFromTag(tagId, fileId){
     Logger.log('Error removing file ids from tag: ' + e.toString());
   }
 }
+
+function autoTagOne(e){
+  const selectedItems = e.drive.selectedItems;
+
+  let fileDetails = '';
+
+  selectedItems.forEach(item =>{
+    const [generatedTags, matchedTags] = processThumbnailWithGemini(item.id)
+    Logger.log("Lets go")
+    Logger.log(generatedTags)
+    Logger.log(matchedTags)
+
+    // Logger.log(matchedTags)
+    fileDetails += `Auto Tags: ${String(generatedTags)}\n\n`
+    fileDetails += `Matched Tags: ${String(matchedTags)}\n\n`
+    fileDetails += `Name: ${item.title}\n\n`
+    fileDetails += `File ID: ${item.id}\n\n`
+    fileDetails += `File Link: ${DriveApp.getFileById(item.id).getUrl()}\n\n`
+    fileDetails += `File type: ${getSimplifiedMimeType(item.mimeType)}\n\n`})
+
+    Logger.log(fileDetails)
+}
+
+function callGeminiProVision(prompt, image, temperature=0) {
+  const imageData = Utilities.base64Encode(image.getAs('image/png').getBytes());
+
+  const payload = {
+    "contents": [
+      {
+        "parts": [
+          {
+            "text": prompt
+          },
+          {
+            "inlineData": {
+              "mimeType": "image/png",
+              "data": imageData
+            }
+          }          
+        ]
+      }
+    ], 
+    "generationConfig":  {
+      "temperature": temperature,
+    },
+  };
+
+  const options = { 
+    'method' : 'post',
+    'contentType': 'application/json',
+    'payload': JSON.stringify(payload),
+  };
+
+  const response = UrlFetchApp.fetch(GEMINIENDPOINT, options);
+  const data = JSON.parse(response);
+  const content = data["candidates"][0]["content"]["parts"][0]["text"];
+  return content;
+}
+
+function testGeminiVision2(thumbnailBlob) {
+  var mylistofpreexistingtags = ["round", "brown", "music", "white", "Really Great Company", "Sigma company", "Best Company", "King George"]
+  var prompt = `You are an assistant that generates tags for images and text content so that the file with these contents will be easily findable by searching up the tags. When given an image or OCR output, you will first check a pre-existing list of tags and get the 5 most relevent tags which matches the context. If there are no matches found or if the pre-existing list of tags that matches the context does not add up to 5, you will auto-generate new tags to fill in the rest so the total tags from the list of pre-existing list and the generated tags list will add up to 5. These tags should behave like folder names, and should be created using the Tag What You See System, which is a principle where tags are based on the first few words that comes to mind when we would describe the file, and these words should be unique enough from each other so that it describes a large part of the file. On top of the Tag What You See System, the tags should also cover enough details to capture unique and useful features of the content so that those contents are easily searchable as part of the keywords, and you should prevent tags that are redundant, vague and general tags that doesnt help narrow down the search, or can be easily assumed from the other tags. For example, it is expected that an invoice would have content like total, money, and the company’s logo, so these descriptions as tags are redundant and can be easily covered with just the tag “Invoice”. Words like information or details to describe that the file contains content are too vague and general, and it is expected that a file would include some sort of information in the first place, so this naming behaviour should also be avoided. But the items that were bought in that invoice, along with the client’s name and client’s company would be unique across all types of invoices, and would be very useful and a common thing that users would want to search up for. The list of pre-existing tags is provided as ${mylistofpreexistingtags}.
+
+  Your response must be a JSON object containing the following structure without any backticks.
+
+  matchedTags: A list of tags from the pre-existing list that match the context (can be empty if no matches are found).
+  generatedTags: A list of newly generated tags — created following the Tag What You See System, ensures that the tags are useful and unique, avoids general, vague and redundant terms — if no matches are found from the pre-existing list (omit if matches are found).`
+
+  const output = callGeminiProVision(prompt, thumbnailBlob);
+
+  return output;
+}
+
+// Grabs the thumbnail of the file and sends it to Gemini Vision
+function processThumbnailWithGemini(fileId) {
+  try {
+    const thumbnailBlob = DriveApp.getFileById(fileId).getThumbnail();
+
+    const response = testGeminiVision2(thumbnailBlob);
+
+    return processGeminiResponse(response);
+    
+  } catch (error) {
+    // Handle TypeError for the thumbnail
+    if (error instanceof TypeError) {
+      console.error('TypeError: Unable to retrieve the thumbnail:', error);
+      return 'This file is not compatible for auto search, please choose a file with a thumbnail displayed';
+    }
+
+    // Handle rate limit 429 error for testGeminiVision2
+    if (error.message && error.message.includes('429')) {
+      console.error('Rate limit exceeded: ', error);
+      return 'Too many requests. Please try again later.';
+    }
+
+    // Handle other errors
+    console.error('Error while processing the thumbnail:', error);
+    return 'An unexpected error occurred. Please refresh and try again.';
+  }
+}
+
+// Gets the response from Gemini Vision and processes it
+function processGeminiResponse(geminiResponse) {
+  // Logger.log(geminiResponse)
+  const responseData = JSON.parse(geminiResponse); 
+
+  // Logger.log(responseData)
+  const generatedTags = responseData.generatedTags; 
+  const matchedTags = responseData.matchedTags
+
+  // Logger.log(generatedTags)
+  // Logger.log(matchedTags)
+
+  return [generatedTags,matchedTags]
+
+}
+
+
+
+
 
 function getSimplifiedMimeType(mimeType) {
   switch (mimeType) {
