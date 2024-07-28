@@ -1311,6 +1311,7 @@ function confirmSearch(e) {
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
         .setText('No files found with the tags provided.'))
+      .setNavigation(CardService.newNavigation().updateCard(onSearchPage()))
       .build();
   }
   else{
