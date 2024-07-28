@@ -1311,6 +1311,13 @@ function confirmSearch(e) {
       .setNavigation(CardService.newNavigation().updateCard(onSearchPage()))
       .build();
   }
+  else if(fileIDJson.fileIds == null){
+    return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText('No files found with the tags provided.'))
+      .setNavigation(CardService.newNavigation().updateCard(onSearchPage()))
+      .build();
+  }
   else{
     // Convert fileIDs to an array
     var fileIDArray = fileIDJson.fileIds;
