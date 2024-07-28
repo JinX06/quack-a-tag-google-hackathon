@@ -337,7 +337,6 @@ function removeTagsFromUserFiles(tagsId) {
       // Update the database with the new list of tags
       else{
         var updatedData = {
-              fileid: hash(fileId),
               gmail: email,
               tags: updatedTags
             };
@@ -1060,7 +1059,6 @@ function addNewTagFile(e) {
       } else {
         // ID does not exist, create new data
         data = {
-          fileid: hash(fileId),
           gmail: email,
           tags: [newTagId]
         };
@@ -1216,7 +1214,6 @@ function removeFileTag(e) {
       // Update the database with the new list of tags
       else{
         var updatedData = {
-              fileid: hash(fileId),
               gmail: email,
               tags: updatedTags
             };
