@@ -78,32 +78,45 @@ function onLibraryPage(e, isEditMode = false){
         .setOnClickAction(CardService.newAction().setFunctionName('changeEditModeLibrary').setParameters({ isEditMode:isEditMode.toString() }))
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
         .setBackgroundColor('#5B7F98')) // Background color for filled style
-      .addButton(CardService.newTextButton()
+      
+      // Only add display when is not edit mode
+      if (!isEditMode){
+        // Edit button
+        headerSet.addButton(CardService.newTextButton()
         .setText('File Search 🔎')
         .setOnClickAction(CardService.newAction().setFunctionName('onSearchPage'))
         .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
         .setBackgroundColor('#A1896B')) // Set desired background color
 
+        // Add New Tags text field
+        var textInput = CardService.newTextInput()
+          .setFieldName('new_tag')
+          .setTitle("Add New Tag ➕")
+          .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
 
-    // Add New Tags text field
-    var textInput = CardService.newTextInput()
-      .setFieldName('new_tag')
-      .setTitle("Add New Tag ➕")
-      .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
+        // Add Tag Button
+        var addTagBtn = CardService.newTextButton()
+            .setText('Confirm')
+            .setOnClickAction(CardService.newAction().setFunctionName('addTagToDb'))
+            .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+            .setBackgroundColor('#ffaf51') // Custom color for the button
 
-    // Add Widgets to Header
-    var libraryHeader = (CardService.newCardSection()
-      .addWidget(headerSet))
-      .addWidget(spacing)
-      .addWidget(spacing)
-      .addWidget(textInput)
-      // Add Tag Button
-      .addWidget(CardService.newTextButton()
-        .setText('Confirm')
-        .setOnClickAction(CardService.newAction().setFunctionName('addTagToDb'))
-        .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-        .setBackgroundColor('#ffaf51')) // Custom color for the button
-      .addWidget(spacing);
+        // Add Widgets to Header
+        var libraryHeader = (CardService.newCardSection()
+          .addWidget(headerSet))
+          .addWidget(spacing)
+          .addWidget(spacing)
+          .addWidget(textInput)
+          .addWidget(addTagBtn) // Custom color for the button
+          .addWidget(spacing);
+      }
+
+      else{
+         var libraryHeader = (CardService.newCardSection()
+          .addWidget(headerSet))
+          .addWidget(spacing)
+      }
+      
 
 
     // Add Tags Display Title as section
@@ -138,12 +151,12 @@ function onLibraryPage(e, isEditMode = false){
         .addButton(CardService.newTextButton()
           .setText("Rename ✍🏼")
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
-          .setBackgroundColor('#e6a902') 
+          .setBackgroundColor('#517769') 
           .setOnClickAction(CardService.newAction().setFunctionName('renameTagLibraryPage')))
         .addButton(CardService.newTextButton()
-          .setText("Remove ❌")
+          .setText("Remove ✖️")
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
-          .setBackgroundColor('#F68888') 
+          .setBackgroundColor('#DD2222') 
           .setOnClickAction(CardService.newAction().setFunctionName('removeTagLibraryPage')));
 
         libraryTagsContent.addWidget(editButtons).addWidget(spacing).addWidget(spacing);
@@ -198,14 +211,14 @@ function removeTagLibraryPage(){
   // Cancel and Remove buttons
   var actionBtns = CardService.newButtonSet()
         .addButton(CardService.newTextButton()
-          .setText("Cancel ❌")
+          .setText("Cancel 🔙")
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
-          .setBackgroundColor('#f0831d') 
+          .setBackgroundColor('#ffaf51') 
           .setOnClickAction(CardService.newAction().setFunctionName('onLibraryPage').setParameters({update: 'true'})))
         .addButton(CardService.newTextButton()
-          .setText("Remove ❌")
+          .setText("Remove ✖️")
           .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
-          .setBackgroundColor('#F68888') 
+          .setBackgroundColor('#DD2222') 
           .setOnClickAction(CardService.newAction().setFunctionName('removeTag')));
   
   // Tag Title
@@ -370,7 +383,7 @@ function onSearchPage() {
   var fileSearchInput = CardService.newTextInput()
     .setFieldName('file_search')
     .setTitle("Insert tags to search for files 🏷️")
-    .setHint(' "E.g. PDF, Budget, Sales..." ');
+    .setHint(' "E.g. T, Budget, Sales..." ');
   
   // Set suggestions only if there are tags in library
   var allTags = getAllTagsName();
@@ -444,12 +457,12 @@ function manageSelectOne(selectedItems, isEditMode){
       .setBackgroundColor(isEditMode ? '#F68888' :'#635A7A')); 
   } else{
     actionButtonSet.addButton(CardService.newTextButton()
-      .setText('Remove ❌')
+      .setText('Remove ✖️')
       .setOnClickAction(CardService.newAction()
         .setFunctionName('removeFileTag')
         .setParameters({selectedItems: JSON.stringify(selectedItems), fileId : file.id}))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-      .setBackgroundColor('#F68888')); 
+      .setBackgroundColor('#DD2222')); 
   }
     
 
