@@ -460,7 +460,7 @@ function manageSelectOne(selectedItems, isEditMode){
       .setText('Remove ✖️')
       .setOnClickAction(CardService.newAction()
         .setFunctionName('removeFileTag')
-        .setParameters({selectedItems: JSON.stringify(selectedItems), fileId : file.id}))
+        .setParameters({selectedItems: JSON.stringify(selectedItems)}))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
       .setBackgroundColor('#DD2222')); 
   }
@@ -483,7 +483,7 @@ function manageSelectOne(selectedItems, isEditMode){
 
   // Add Tag Input
   var addTagInput = CardService.newTextInput()
-    .setFieldName('addNewTagOneFileInput')
+    .setFieldName('addNewTagInput')
     .setTitle("Add Tag to File ➕")
     .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
   
@@ -589,26 +589,40 @@ function manageSelectOne(selectedItems, isEditMode){
 /**
  * The function to display managepage when multiple files are selected.
  */
-function manageSelectMultiple(selectedItems){
+function manageSelectMultiple(selectedItems, isEditMode){
 
-  // Create the button
+  // Create the buttons
   var actionButtonSet = CardService.newButtonSet()
     .addButton(CardService.newTextButton()
-      .setText("Edit...✏️")
-      .setOnClickAction(CardService.newAction().setFunctionName('editTagMutliple'))
+      .setText(isEditMode ? 'Done ✅' : "Edit...✏️") //show done button if is in edit mode (after click edit button),else show edit button
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName('changeEditModeFile')
+        .setParameters({ selectedItems: JSON.stringify(selectedItems),isEditMode:isEditMode.toString() }))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
       .setBackgroundColor('#5B7F98')) // Background color for filled style
-    .addButton(CardService.newTextButton()
+
+  // Display auto tag if is in edit mode, else remove button
+  if (!isEditMode){
+    actionButtonSet.addButton(CardService.newTextButton()
       .setText("Auto Tag ✨")
-      .setOnClickAction(CardService.newAction().setFunctionName('autoTagMultiple'))
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
-      .setBackgroundColor('#635A7A')); // Background color for filled style
+      .setOnClickAction(CardService.newAction().setFunctionName('autoTagOne'))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+      .setBackgroundColor(isEditMode ? '#F68888' :'#635A7A')); 
+  } else{
+    actionButtonSet.addButton(CardService.newTextButton()
+      .setText('Remove ✖️')
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName('removeFileTag')
+        .setParameters({selectedItems: JSON.stringify(selectedItems)}))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+      .setBackgroundColor('#DD2222')); 
+  }
 
     
  
   // Add Tag Input
   var addTagInput = CardService.newTextInput()
-    .setFieldName('addNewTagOneFileInput')
+    .setFieldName('addNewTagInput')
     .setTitle("Add Tag to File ➕")
     .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
   
@@ -639,10 +653,12 @@ function manageSelectMultiple(selectedItems){
 
   var sharedTags =getSharedTags (selectedItems);
 
-  Logger.log(sharedTags)
+  Logger.log("Shared Tags:\n"+sharedTags)
 
-  var tagList = CardService.newButtonSet();
-    if (sharedTags.length > 0) {
+  // Display buttons or checkbox if there is any shared tags
+  if (sharedTags.length > 0) {
+    if (!isEditMode) {
+      var tagList = CardService.newButtonSet();
       var sortedTags = getSortedTags(sharedTags);
       sortedTags.forEach(tag => {
         tagList.addButton(CardService.newTextButton()
@@ -651,7 +667,20 @@ function manageSelectMultiple(selectedItems){
           .setBackgroundColor('#8A4B3C') // Background color for filled style
           .setOnClickAction(CardService.newAction().setFunctionName('nothing')));
       });
-    }
+    } else {
+      var tagList = CardService.newSelectionInput()
+        .setType(CardService.SelectionInputType.CHECK_BOX)
+        .setFieldName('tagsToDelete');
+        
+      var sortedTags = getSortedTags(sharedTags);
+      sortedTags.forEach(function(tag) {
+        empty = false;
+        tagList.addItem(tag.name, JSON.stringify({ id: tag.id, name: tag.name }), false);
+      });
+      }    
+  } else{
+    var tagList = CardService.newTextParagraph().setText('There are no tags shared between these files')
+  }
 
 
   // Manage One Display
@@ -688,11 +717,16 @@ function getSharedTags(selectedItems) {
     
     if (fileTagsData && fileTagsData.tags) {
       tagsArrays.push(fileTagsData.tags);
+    } else {
+      // If any file has no tags, return an empty array immediately
+      tagsArrays.push([]);
     }
   });
 
   // Find shared tags
-  if (tagsArrays.length === 0) return []; // No files or no tags in files
+  if (tagsArrays.length === 0 || tagsArrays.some(tags => tags.length === 0)) {
+    return []; // No files, no tags in files, or at least one file has no tags
+  }
 
   // Find intersection of all tag arrays
   let sharedTags = tagsArrays.reduce((acc, tags) => {
@@ -700,7 +734,7 @@ function getSharedTags(selectedItems) {
   });
 
   return sharedTags;
-} 
+}
 
 
 
@@ -843,7 +877,7 @@ function suggestTags (tags){
  */
 function addNewTagFile(e) {
 
-  if (!e.formInputs.addNewTagOneFileInput){
+  if (!e.formInputs.addNewTagInput){
     return CardService.newActionResponseBuilder()
           .setNotification(CardService.newNotification()
             .setText('Please enter a tag.'))
@@ -851,65 +885,68 @@ function addNewTagFile(e) {
   }
 
   var selectedItems = JSON.parse(e.parameters.selectedItems);
-  var newTagObject = e.formInputs.addNewTagOneFileInput[0];
+  var newTagObject = e.formInputs.addNewTagInput[0];
   var newTag = String(newTagObject).trim()
-  var fileId = selectedItems[0].id;
-  var hashId = hash(email + fileId);
   var newTagId = hash(email+newTag.toLowerCase())
 
+  //Loop for every selected items/files
   try {
-    var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+    selectedItems.forEach (file =>{
+      var fileId = file.id;
+      var hashId = hash(email + fileId);
+      var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
 
-    // Check if the ID exists
-    var response = UrlFetchApp.fetch(url, { method: 'GET' });
-    var data = JSON.parse(response.getContentText());
+      // Check if the ID exists
+      var response = UrlFetchApp.fetch(url, { method: 'GET' });
+      var data = JSON.parse(response.getContentText());
 
-    Logger.log(data)
+      Logger.log(data)
 
-    if (data) {
-      // ID exists, add the new tag to the existing list
-      if (!Array.isArray(data.tags)) {
-        data.tags = [];
+      if (data) {
+        // ID exists, add the new tag to the existing list
+        if (!Array.isArray(data.tags)) {
+          data.tags = [];
+        }
+
+        // Ensure no duplicates and avoid nested arrays
+        if (!data.tags.includes(newTagId)) {
+          data.tags.push(newTagId);
+        } else{
+          return CardService.newActionResponseBuilder()
+            .setNotification(CardService.newNotification()
+              .setText(`${newTag} already exists on this file.`))
+            .build();
+        }
+        
+      } else {
+        // ID does not exist, create new data
+        data = {
+          fileid: hash(fileId),
+          gmail: email,
+          tags: [newTagId]
+        };
       }
 
-      // Ensure no duplicates and avoid nested arrays
-      if (!data.tags.includes(newTagId)) {
-        data.tags.push(newTagId);
-      } else{
-        return CardService.newActionResponseBuilder()
-          .setNotification(CardService.newNotification()
-            .setText(`${newTag} already exists on this file.`))
-          .build();
-      }
-      
-    } else {
-      // ID does not exist, create new data
-      data = {
-        fileid: hash(fileId),
-        gmail: email,
-        tags: [newTagId]
+      // Update the database
+      var options = {
+        method: 'PUT', // Use PUT to replace the entire data
+        contentType: 'application/json',
+        payload: JSON.stringify(data)
       };
-    }
 
-    // Update the database
-    var options = {
-      method: 'PUT', // Use PUT to replace the entire data
-      contentType: 'application/json',
-      payload: JSON.stringify(data)
-    };
+      UrlFetchApp.fetch(url, options);
 
-    UrlFetchApp.fetch(url, options);
+      // Add new into database if it doesnt exist
+      addTagIfNotExists(newTag)
 
-    // Add new into database if it doesnt exist
-    addTagIfNotExists(newTag)
-
-    // Add URL Link to the tag database
-    addFileDetailsToTag(newTag, fileId);
+      // Add URL Link to the tag database
+      addFileDetailsToTag(newTag, fileId);
+    })
 
     // Refresh page by returning the updated card
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText(`${newTag} has been added to this file.`))
+        .setText(`${newTag} has been added to the file.`))
       .setNavigation(CardService.newNavigation().updateCard(onManagePage(selectedItems))) // Ensure this returns the updated card
       .build();
   
@@ -1008,54 +1045,58 @@ function removeFileTag(e) {
   var selectedTagsName = e.formInputs.tagsToDelete.map(tag => JSON.parse(tag).name);
 
   var selectedItems = JSON.parse(e.parameters.selectedItems);
-  var fileId = e.parameters.fileId;
-  var hashId = hash(email + fileId);
+ 
 
   try {
-    // Fetch the current tags for the file
-    var fileTagsData = getFileTagsDataById(fileId);
-    
-    if (!fileTagsData || !fileTagsData.tags) {
-      return CardService.newActionResponseBuilder()
-        .setNotification(CardService.newNotification()
-          .setText('No tags found for this file.'))
-        .build();
-    }
 
-    // Remove the selected tags from the existing tags
-    var updatedTags = fileTagsData.tags.filter(tagId => !selectedTagsId.includes(tagId));
+    selectedItems.forEach(file=>{
+      var fileId = file.id;
+      var hashId = hash(email + fileId);
+      // Fetch the current tags for the file
+      var fileTagsData = getFileTagsDataById(fileId);
+      
+      if (!fileTagsData || !fileTagsData.tags) {
+        return CardService.newActionResponseBuilder()
+          .setNotification(CardService.newNotification()
+            .setText('No tags found for this file.'))
+          .build();
+      }
 
-    // Check if updatedTags is empty, if so, delete the document
-    if (updatedTags.length === 0) {
-      var deleteUrl = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
-      var deleteOptions = {
-        method: 'DELETE'
-      };
+      // Remove the selected tags from the existing tags
+      var updatedTags = fileTagsData.tags.filter(tagId => !selectedTagsId.includes(tagId));
 
-      UrlFetchApp.fetch(deleteUrl, deleteOptions);
-    } 
-    // Update the database with the new list of tags
-    else{
-      var updatedData = {
-            fileid: hash(fileId),
-            gmail: email,
-            tags: updatedTags
-          };
+      // Check if updatedTags is empty, if so, delete the document
+      if (updatedTags.length === 0) {
+        var deleteUrl = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+        var deleteOptions = {
+          method: 'DELETE'
+        };
 
-          var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
-          var options = {
-            method: 'PUT',
-            contentType: 'application/json',
-            payload: JSON.stringify(updatedData)
-          };
+        UrlFetchApp.fetch(deleteUrl, deleteOptions);
+      } 
+      // Update the database with the new list of tags
+      else{
+        var updatedData = {
+              fileid: hash(fileId),
+              gmail: email,
+              tags: updatedTags
+            };
 
-          UrlFetchApp.fetch(url, options);
-    }
-    
-    // Remove the fileid from the tag database
-    selectedTagsId.forEach(tagId => {
-      removeFileDetailsFromTag(tagId, fileId);
-    });
+            var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+            var options = {
+              method: 'PUT',
+              contentType: 'application/json',
+              payload: JSON.stringify(updatedData)
+            };
+
+            UrlFetchApp.fetch(url, options);
+      }
+      
+      // Remove the fileid from the tag database
+      selectedTagsId.forEach(tagId => {
+        removeFileDetailsFromTag(tagId, fileId);
+      });
+    })
 
     // Notify the user
     var notificationText = selectedTagsName.length > 0 ? 
