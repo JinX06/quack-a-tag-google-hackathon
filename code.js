@@ -1166,9 +1166,14 @@ function confirmSearch(e) {
 
   var searchTags = e.formInputs.file_search[0].split(',').map(tag => tag.trim());
   var fileIDJson = getFileIDsByTag(String(searchTags));
-  Logger.log(fileIDJson)
 
   if (fileIDJson == null) {
+    return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText('No files found with the tags provided.'))
+      .build();
+  }
+  else if(fileIDJson.fileIds == null){
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
         .setText('No files found with the tags provided.'))
