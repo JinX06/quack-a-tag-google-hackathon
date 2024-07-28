@@ -1082,10 +1082,7 @@ function onItemsSelected(e) {
     return onLibraryPage();
   }
   
-  // return onManagePage(selectedItems);
-  return CardService.newActionResponseBuilder()
-    .setNavigation(CardService.newNavigation().updateCard(onManagePage(selectedItems)))
-    .build();
+  return onManagePage(selectedItems);
 }
 
 function showAddLabelCard() {}
