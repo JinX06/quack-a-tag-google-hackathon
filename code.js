@@ -640,7 +640,7 @@ function manageSelectOne(selectedItems, isEditMode){
       Logger.log('Error uploading image to ImageBB: ' + e.message);
     }
   }
-  Logger.log(imagelink);
+  // Logger.log(imagelink);
 
   var imageWidget = CardService.newImage()
     .setImageUrl(imagelink)
@@ -1529,26 +1529,39 @@ function removeFileDetailsFromTag(tagId, fileId){
   }
 }
 
-function autoTagOne(e){
+function autoTagOne(e) {
   const selectedItems = e.drive.selectedItems;
-
+  const item = selectedItems[0];
+  
   let fileDetails = '';
-
-  selectedItems.forEach(item =>{
-    const [generatedTags, matchedTags] = processThumbnailWithGemini(item.id)
-    Logger.log("Lets go")
-    Logger.log(generatedTags)
-    Logger.log(matchedTags)
-
-    // Logger.log(matchedTags)
-    fileDetails += `Auto Tags: ${String(generatedTags)}\n\n`
-    fileDetails += `Matched Tags: ${String(matchedTags)}\n\n`
-    fileDetails += `Name: ${item.title}\n\n`
-    fileDetails += `File ID: ${item.id}\n\n`
-    fileDetails += `File Link: ${DriveApp.getFileById(item.id).getUrl()}\n\n`
-    fileDetails += `File type: ${getSimplifiedMimeType(item.mimeType)}\n\n`})
-
-    Logger.log(fileDetails)
+  
+  const result = processThumbnailWithGemini(item.id);
+  
+  if (result.success) {
+    const { generatedTags, matchedTags } = result;
+    fileDetails += `Auto Tags: ${String(generatedTags)}\n\n`;
+    fileDetails += `Matched Tags: ${String(matchedTags)}\n\n`;
+    fileDetails += `Name: ${item.title}\n\n`;
+    fileDetails += `File ID: ${item.id}\n\n`;
+    fileDetails += `File Link: ${DriveApp.getFileById(item.id).getUrl()}\n\n`;
+    fileDetails += `File type: ${getSimplifiedMimeType(item.mimeType)}\n\n`;
+  
+    Logger.log(fileDetails);
+    Logger.log(generatedTags);
+    Logger.log(matchedTags);
+  } else {
+    // Logger.log('Error detected, preparing to show notification');
+    Logger.log(result.errorMessage);
+    return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText(result.errorMessage))
+      .build();
+  }
+  
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification()
+      .setText('Tag generated successfully!'))
+    .build();
 }
 
 function callGeminiProVision(prompt, image, temperature=0) {
@@ -1608,24 +1621,27 @@ function processThumbnailWithGemini(fileId) {
 
     const response = testGeminiVision2(thumbnailBlob);
 
-    return processGeminiResponse(response);
+    const [generatedTags, matchedTags] = processGeminiResponse(response);
+    return { success: true, generatedTags, matchedTags };
     
   } catch (error) {
+    let errorMessage;
+
     // Handle TypeError for the thumbnail
     if (error instanceof TypeError) {
       console.error('TypeError: Unable to retrieve the thumbnail:', error);
-      return 'This file is not compatible for auto search, please choose a file with a thumbnail displayed';
-    }
-
-    // Handle rate limit 429 error for testGeminiVision2
-    if (error.message && error.message.includes('429')) {
+      errorMessage = 'This file is not compatible for auto search, please choose a file with a thumbnail displayed';
+    } else if (error.message && error.message.includes('429')) {
+      // Handle rate limit 429 error for testGeminiVision2
       console.error('Rate limit exceeded: ', error);
-      return 'Too many requests. Please try again later.';
+      errorMessage = 'Too many requests. Please try again later.';
+    } else {
+      // Handle other errors
+      console.error('Error while processing the thumbnail:', error);
+      errorMessage = 'An unexpected error occurred. Please refresh and try again.';
     }
 
-    // Handle other errors
-    console.error('Error while processing the thumbnail:', error);
-    return 'An unexpected error occurred. Please refresh and try again.';
+    return { success: false, errorMessage };
   }
 }
 
