@@ -27,7 +27,7 @@ function onHelpAction(e) {
 
   const card = CardService.newCardBuilder()
     .addSection(CardService.newCardSection()
-      .addWidget(CardService.newTextParagraph().setText(`<b>Welcome to</b> <font color=\"#ffaf51\"><b>Quack-a-Tag!🏷️</b></font> <br> Add your first tag in Your Library 📖 to get started, or auto generate tags for your selected file(s) under Manage File(s) ⚙️. <br> <br> 📖 > <font color=\"#5B7F98\"><b>(Edit...✏️)</b></font> <br> Rename or delete existing tags. <br> <br> 📖 > <font color=\"#A1896B\"><b>(File Search 🔎)</b></font> <br> Search for files by selecting the tags that you assigned/described. <br> <br> *Note: You <b>don’t</b> need to select every tag associated with a file for it to appear. <br> <br> <br> ⚙️ > <font color=\"#5B7F98\"><b>(Edit...✏️)</b></font> <br> Delete tags previously added to the selected file(s) <br> <br> ⚙️ > <font color=\"#7A4DB2\"><b>(Auto Tag ✨)</b></font> <br> Auto generates tags based on what can be described from your file. Depending on your file size, it may take a few seconds to generate. <br> <br> *E.g. Tags from an invoice's contents <font color=\"#FF8686\">[recipient's gmail], [recipient's contact], [recipient's name], [service/product purchased]</b></font>. <br> <br> Click <font color=\"#ffaf51\"><b>(${buttonText})</b></font> to get started on your hassle-free organizing journey! You can always revisit this guide under <b>⋮</b> > Help <br> <br> Thanks for using our service!`)))
+      .addWidget(CardService.newTextParagraph().setText(`<b>Welcome to</b> <font color=\"#ffaf51\"><b>Quack-a-Tag!🏷️</b></font> <br> Add your first tag in Your Library 📖 to get started, or auto generate tags for your selected file(s) under Manage File(s) ⚙️. <br> <br> <br> 📖 > <font color=\"#5B7F98\"><b>(Edit...✏️)</b></font> <br> Rename or delete existing tags. <br> <br> 📖 > <font color=\"#A1896B\"><b>(File Search 🔎)</b></font> <br> Search for files by selecting the tags that you assigned/described. <br> <br> *Note: You <b>don’t</b> need to select every tag associated with a file for it to appear. <br> <br> <br> ⚙️ > <font color=\"#5B7F98\"><b>(Edit...✏️)</b></font> <br> Delete tags previously added to the selected file(s) <br> <br> ⚙️ > <font color=\"#7A4DB2\"><b>(Auto Tag ✨)</b></font> <br> Auto generates tags based on what can be described from your file. Depending on your file size, it may take a few seconds to generate. <br> <br> <br> Click <font color=\"#ffaf51\"><b>(${buttonText})</b></font> to get started on your hassle-free organizing journey! You can always revisit this guide under <b>⋮</b> > Help <br> <br> Thanks for using our service!`)))
     .addSection(CardService.newCardSection()
       .addWidget(CardService.newTextButton()
         .setText(buttonText)
@@ -196,7 +196,7 @@ function addTagToDb(e) {
 
   return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText(add? newTag + " has been added to Your Library." : newTag + " already exists in Your Library"))
+        .setText(add? newTag + " has been added to Your Library. Refresh the page if change has not been reflected properly." : newTag + " already exists in Your Library"))
       .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
       .build();
 
@@ -281,7 +281,7 @@ function removeTag (e){
 
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification()
-      .setText(`${tagsName.join(', ')} have been removed.`))
+      .setText(`${tagsName.join(', ')} have been removed. Refresh the page if change has not been reflected properly.`))
     .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
     .build();
 }
@@ -359,9 +359,154 @@ function removeTagsFromUserFiles(tagsId) {
   }
 }
 
+/**
+ * The function is to display rename tag page
+ */
 function renameTagLibraryPage(){
+  var renameTagLibraryPage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Rename Tag 📖"))
 
+  // Cancel and Remove buttons
+  var actionBtns = CardService.newButtonSet()
+        .addButton(CardService.newTextButton()
+          .setText("Cancel 🔙")
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+          .setBackgroundColor('#ffaf51') 
+          .setOnClickAction(CardService.newAction().setFunctionName('onLibraryPage').setParameters({update: 'true'})))
+        .addButton(CardService.newTextButton()
+          .setText("Rename ✍🏼")
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
+          .setBackgroundColor('#517769') 
+          .setOnClickAction(CardService.newAction().setFunctionName('renameTags')));
+
+  // Add into Section
+  var actionBtnsSection = CardService.newCardSection()
+    .addWidget(actionBtns);
+
+  
+  // Tag Title
+  var libraryTagsTitle = CardService.newTextParagraph().setText('Tags 🏷️')
+
+  var tagSection = CardService.newCardSection()
+    .addWidget(libraryTagsTitle)
+
+  // Text Input to rename the tag
+  var tagData = getAllTagsData ();
+  Logger.log(tagData)
+
+  if (tagData) {
+    tagData.forEach(tag => {
+      // Create a new TextInput for each tag with prefilled value
+      var textInput = CardService.newTextInput()
+        .setFieldName(`${tag.id}`) // Unique field name for each tag
+        .setValue(tag.name) // Prefill the input with the tag name
+
+      tagSection.addWidget(textInput)
+    });
+  }
+
+  
+     
+  // Display all section
+  renameTagLibraryPage.addSection(actionBtnsSection).addSection(tagSection);
+
+  return CardService.newNavigation().updateCard(renameTagLibraryPage.build());
 }
+
+/**
+ * Function to rename tag 
+ */
+function renameTags (e){
+
+  Logger.log(e.formInput)
+  // Extract new names and IDs from the event object
+  const newTags = Object.keys(e.formInput).map(key => {
+    const name = e.formInput[key].trim();
+    const oldId = key;
+    const newId = hash(email + name.toLowerCase());
+
+    return { oldId, newId, name };
+  });
+
+  // Fetch existing tags and update the tags collection
+  newTags.forEach(tag => {
+    if (tag.oldId !== tag.newId){
+      updateTagInTagsCollection(tag.oldId, tag.newId, tag.name);
+      updateTagInFileTagsCollection(tag.oldId, tag.newId);
+    }
+  });
+  
+  return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification()
+      .setText(`Tags have been renamed. Refresh the page if change has not been reflected properly.`))
+    .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
+    .build();
+}
+
+/**
+ * Rename the tags in the Tags collection
+ */
+function updateTagInTagsCollection(oldId, newId, newName) {
+  const url = `${FIREBASE_URL}/tags/${oldId}.json?auth=${FIREBASE_SECRET}`;
+  
+  // Fetch existing tag data
+  const response = UrlFetchApp.fetch(url, { method: "GET" });
+  const tagData = JSON.parse(response.getContentText());
+
+  // Update tag data
+  const updatedTagData = {
+    ...tagData,
+    gmail: email,
+    name: newName
+  };
+
+  // Save new tag data
+  const updateUrl = `${FIREBASE_URL}/tags/${newId}.json?auth=${FIREBASE_SECRET}`;
+  UrlFetchApp.fetch(updateUrl, {
+    method: "PUT",
+    contentType: "application/json",
+    payload: JSON.stringify(updatedTagData)
+  });
+
+  // Remove old tag data
+  UrlFetchApp.fetch(url, { method: "DELETE" });
+}
+
+
+/**
+ * Update the tag id in the File Tags collection when rename
+ */
+function updateTagInFileTagsCollection(oldId, newId) {
+  // Fetch all file tags
+  const url = `${FIREBASE_URL}/fileTags.json?auth=${FIREBASE_SECRET}`;
+  const response = UrlFetchApp.fetch(url, { method: "GET" });
+  const fileTags = JSON.parse(response.getContentText());
+
+  // Iterate over each file entry and update tag references if the email matches
+  for (const fileId in fileTags) {
+    if (fileTags.hasOwnProperty(fileId)) {
+      const fileTagData = fileTags[fileId];
+
+      // Check if the file belongs to the specified email
+      if (fileTagData.gmail === email) {
+        // Update tag references
+        const updatedTags = fileTagData.tags.map(tagId => tagId === oldId ? newId : tagId);
+
+        // Save updated file tag data
+        const updateUrl = `${FIREBASE_URL}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
+        UrlFetchApp.fetch(updateUrl, {
+          method: "PUT",
+          contentType: "application/json",
+          payload: JSON.stringify({
+            ...fileTagData,
+            tags: updatedTags
+          })
+        });
+      }
+    }
+  }
+}
+
+
 
 /**
  * This is a back fucntion, allow user to go back to prev page
@@ -415,16 +560,16 @@ function onSearchPage() {
 /**
  * The function to display Manage Page.
  */
-function onManagePage(selectedItems, isEditMode=false) {
-  var managePage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Manage File(s) ⚙️"));
-      managePage.addCardAction(cardHelpAction);
-    
+function onManagePage(selectedItems, isEditMode=false) {    
   if (selectedItems.length == 1) {
+    var managePage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Manage File ⚙️"));
     var sections = manageSelectOne(selectedItems,isEditMode);
   } else {
+    var managePage = CardService.newCardBuilder().setHeader(CardService.newCardHeader().setTitle("Manage Files ⚙️"));
     var sections = manageSelectMultiple(selectedItems,isEditMode);
   }
 
+  managePage.addCardAction(cardHelpAction);
   sections.forEach(function(section) {
       managePage.addSection(section);
     });
@@ -481,28 +626,31 @@ function manageSelectOne(selectedItems, isEditMode){
         .setSubtitle(getSimplifiedMimeType(file.mimeType)) //file type
         .setTextAlignment(CardService.HorizontalAlignment.CENTER));
 
-  // Add Tag Input
-  var addTagInput = CardService.newTextInput()
-    .setFieldName('addNewTagInput')
-    .setTitle("Add Tag to File ➕")
-    .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
-  
+  // Display add tag section when it is not in edit mode
+  if (!isEditMode){
+    // Add Tag Input
+    var addTagInput = CardService.newTextInput()
+      .setFieldName('addNewTagInput')
+      .setTitle("Add Tag to File ➕")
+      .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
+    
 
-  // Set suggestions only if there are tags in library
-  var allTags = getAllTagsName();
-  if (allTags.length>0){
-    addTagInput.setSuggestions(suggestTags(allTags))
-  }
+    // Set suggestions only if there are tags in library
+    var allTags = getAllTagsName();
+    if (allTags.length>0){
+      addTagInput.setSuggestions(suggestTags(allTags))
+    }
 
 
-  // Add Tag Button
-  var addTagButton = CardService.newTextButton()
-    .setText('Confirm')
-    .setOnClickAction(CardService.newAction()
-      .setFunctionName('addNewTagFile')
-      .setParameters({ selectedItems: JSON.stringify(selectedItems) }))
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
-      .setBackgroundColor('#ffaf51'); // Background color for filled style
+    // Add Tag Button
+    var addTagButton = CardService.newTextButton()
+      .setText('Confirm')
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName('addNewTagFile')
+        .setParameters({ selectedItems: JSON.stringify(selectedItems) }))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
+        .setBackgroundColor('#ffaf51'); // Background color for filled style
+    }
 
 
   // Display Tags 
@@ -557,29 +705,22 @@ function manageSelectOne(selectedItems, isEditMode){
     .addWidget(imageWidget)
     .addWidget(fileDetails);
 
-
-  var addTagSection = CardService.newCardSection()
-    .addWidget(addTagInput)
-    .addWidget(addTagButton)
-    .addWidget(spacing);
-
-
   var tagManageTitle = CardService.newCardSection()
     .addWidget (spacing)
     .addWidget (spacing)
     .addWidget(tagsTitle)
-    .addWidget (spacing);
+    .addWidget (spacing)
+    .addWidget(empty? emptyTag : tagList);
   
-
-  if (!empty){
-    tagManageTitle.addWidget(tagList);
-  }
-  else {
-
-    tagManageTitle.addWidget(emptyTag);
-  }
     
+  if (isEditMode){
+    return [headerManage, tagManageTitle, spacer];
+  }
 
+  var addTagSection = CardService.newCardSection()
+      .addWidget(addTagInput)
+      .addWidget(addTagButton)
+      .addWidget(spacing);
 
   // Return the sections as an array
   return [headerManage, addTagSection, tagManageTitle, spacer];
@@ -601,47 +742,42 @@ function manageSelectMultiple(selectedItems, isEditMode){
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
       .setBackgroundColor('#5B7F98')) // Background color for filled style
 
-  // Display auto tag if is in edit mode, else remove button
-  if (!isEditMode){
+  // Display remove button if is in edit mode
+  if (isEditMode){
     actionButtonSet.addButton(CardService.newTextButton()
-      .setText("Auto Tag ✨")
-      .setOnClickAction(CardService.newAction().setFunctionName('autoTagOne'))
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED) 
-      .setBackgroundColor(isEditMode ? '#F68888' :'#635A7A')); 
-  } else{
-    actionButtonSet.addButton(CardService.newTextButton()
-      .setText('Remove ✖️')
-      .setOnClickAction(CardService.newAction()
-        .setFunctionName('removeFileTag')
-        .setParameters({selectedItems: JSON.stringify(selectedItems)}))
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-      .setBackgroundColor('#DD2222')); 
-  }
-
-    
+          .setText('Remove ✖️')
+          .setOnClickAction(CardService.newAction()
+            .setFunctionName('removeFileTag')
+            .setParameters({selectedItems: JSON.stringify(selectedItems)}))
+          .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+          .setBackgroundColor('#DD2222')); 
+  }     
  
-  // Add Tag Input
-  var addTagInput = CardService.newTextInput()
-    .setFieldName('addNewTagInput')
-    .setTitle("Add Tag to File ➕")
-    .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
-  
+  // Do no display add tag section if is in edit mode
+  if (!isEditMode){
+    // Add Tag Input
+    var addTagInput = CardService.newTextInput()
+      .setFieldName('addNewTagInput')
+      .setTitle("Add Tag to File ➕")
+      .setHint(' "E.g. Outstanding, Report, Follow-up..." ')
+    
 
-  // Set suggestions only if there are tags in library
-  var allTags = getAllTagsName();
-  if (allTags.length>0){
-    addTagInput.setSuggestions(suggestTags(allTags))
+    // Set suggestions only if there are tags in library
+    var allTags = getAllTagsName();
+    if (allTags.length>0){
+      addTagInput.setSuggestions(suggestTags(allTags))
+    }
+
+
+    // Add Tag Button
+    var addTagButton = CardService.newTextButton()
+      .setText('Confirm')
+      .setOnClickAction(CardService.newAction()
+        .setFunctionName('addNewTagFile')
+        .setParameters({ selectedItems: JSON.stringify(selectedItems) }))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
+        .setBackgroundColor('#ffaf51'); // Background color for filled style
   }
-
-
-  // Add Tag Button
-  var addTagButton = CardService.newTextButton()
-    .setText('Confirm')
-    .setOnClickAction(CardService.newAction()
-      .setFunctionName('addNewTagFile')
-      .setParameters({ selectedItems: JSON.stringify(selectedItems) }))
-      .setTextButtonStyle(CardService.TextButtonStyle.FILLED) // Optional: Adds a filled background style
-      .setBackgroundColor('#ffaf51'); // Background color for filled style
 
 
   // Display Tags & Number of file selected
@@ -686,18 +822,21 @@ function manageSelectMultiple(selectedItems, isEditMode){
   // Manage One Display
   var headerManage = CardService.newCardSection()
     .addWidget(actionButtonSet);
-
-
-  var addTagSection = CardService.newCardSection()
-    .addWidget(addTagInput)
-    .addWidget(addTagButton)
-    .addWidget(spacing);
-
-
+    
   var tagSection = CardService.newCardSection()
     .addWidget(tagsTitle)
     .addWidget(tagList);
+
+  if (isEditMode){
+    // Return the sections as an array
+    return [headerManage, tagSection, spacer];
+  }
   
+
+  var addTagSection = CardService.newCardSection()
+        .addWidget(addTagInput)
+        .addWidget(addTagButton)
+        .addWidget(spacing);
 
 
   // Return the sections as an array
@@ -946,7 +1085,7 @@ function addNewTagFile(e) {
     // Refresh page by returning the updated card
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText(`${newTag} has been added to the file.`))
+        .setText(`${newTag} has been added to the file. Refresh the page if change has not been reflected properly.`))
       .setNavigation(CardService.newNavigation().updateCard(onManagePage(selectedItems))) // Ensure this returns the updated card
       .build();
   
@@ -1100,7 +1239,7 @@ function removeFileTag(e) {
 
     // Notify the user
     var notificationText = selectedTagsName.length > 0 ? 
-      `${selectedTagsName.join(', ')} have been removed from this file.` : 
+      `${selectedTagsName.join(', ')} have been removed from this file. Refresh the page if change has not been reflected properly.` : 
       'No tags were removed.';
 
     // Refresh page (not in editmode) by returning the updated card
@@ -1166,14 +1305,9 @@ function confirmSearch(e) {
 
   var searchTags = e.formInputs.file_search[0].split(',').map(tag => tag.trim());
   var fileIDJson = getFileIDsByTag(String(searchTags));
+  Logger.log(fileIDJson)
 
   if (fileIDJson == null) {
-    return CardService.newActionResponseBuilder()
-      .setNotification(CardService.newNotification()
-        .setText('No files found with the tags provided.'))
-      .build();
-  }
-  else if(fileIDJson.fileIds == null){
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
         .setText('No files found with the tags provided.'))
