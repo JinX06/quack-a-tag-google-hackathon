@@ -247,7 +247,7 @@ function removeTag (e){
   if (!e.formInputs.tagsToRemove) {
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText('Please select at least tag to remove.'))
+        .setText('Please select at least a tag to remove.'))
       .build();
   }
 
@@ -384,7 +384,7 @@ function onSearchPage() {
     .addWidget(fileSearchInput)
     .addWidget(CardService.newTextButton()
       .setText('Confirm')
-      .setOnClickAction(CardService.newAction().setFunctionName('ConfirmSearch'))
+      .setOnClickAction(CardService.newAction().setFunctionName('confirmSearch'))
       .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
       .setBackgroundColor('#ffaf51')); // Custom color for the button
   
@@ -890,6 +890,9 @@ function addNewTagFile(e) {
     // Add new into database if it doesnt exist
     addTagIfNotExists(newTag)
 
+    // Add URL Link to the tag database
+    addFileDetailsToTag(newTag, fileId);
+
     // Refresh page by returning the updated card
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
@@ -983,7 +986,7 @@ function removeFileTag(e) {
   if (!e.formInputs.tagsToDelete) {
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText('Please select at least tag to remove.'))
+        .setText('Please select at least a tag to remove.'))
       .build();
   }
 
@@ -1035,7 +1038,12 @@ function removeFileTag(e) {
 
           UrlFetchApp.fetch(url, options);
     }
-   
+    
+    // Remove the fileid from the tag database
+    selectedTagsId.forEach(tagId => {
+      removeFileDetailsFromTag(tagId, fileId);
+    });
+
     // Notify the user
     var notificationText = selectedTagsName.length > 0 ? 
       `${selectedTagsName.join(', ')} have been removed from this file.` : 
@@ -1093,6 +1101,178 @@ function showRemoveLabelCard() {}
 
 function showLabelContentCard() {}
 
+// Search for all files associated with the tag
+function confirmSearch(e) {
+  if (!e.formInputs.file_search) {
+      return CardService.newActionResponseBuilder()
+            .setNotification(CardService.newNotification()
+              .setText('Please enter a tag to search.'))
+            .build();
+    }
+
+  var searchTags = e.formInputs.file_search[0].split(',').map(tag => tag.trim());
+  var fileIDJson = getFileIDsByTag(String(searchTags));
+  Logger.log(fileIDJson)
+
+  if (fileIDJson == null) {
+    return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText('No files found with the tags provided.'))
+      .build();
+  }
+  else{
+    // Convert fileIDs to an array
+    var fileIDArray = fileIDJson.fileIds;
+    
+    // Initialize arrays to store filenames and URLs
+    var fileNameArray = [];
+    var fileUrlArray = [];
+
+    // Iterate over fileIDArray
+    fileIDArray.forEach(fileID => {
+      // Get the file using the fileId
+      const file = DriveApp.getFileById(fileID.trim());
+
+      // Append the filename and file URL to the respective arrays
+      fileNameArray.push(file.getName());
+      fileUrlArray.push(file.getUrl());
+    });
+
+    // Create a ButtonSet
+    var buttonSet = CardService.newButtonSet();
+    
+    // Iterate over the fileUrl array and create a button for each URL
+    fileUrlArray.forEach((url, index) => {
+      var name = fileNameArray[index]; // Get the corresponding file name
+      var button = CardService.newTextButton()
+        .setText(name) // Set the button text to the file name
+        .setOpenLink(
+          CardService.newOpenLink()
+            .setUrl(url) // Set the URL for the button
+            .setOpenAs(CardService.OpenAs.FULL_SIZE))
+        .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+        .setBackgroundColor('#635A7A'); // Set your desired background color
+    
+      buttonSet.addButton(button);
+    });
+    
+    // Create a card section and add the ButtonSet to it
+    var section = CardService.newCardSection()
+      .addWidget(buttonSet);
+    
+    // Return the card with the section
+    return CardService.newCardBuilder()
+      .addSection(section)
+      .build();
+}
+
+
+}
+
+// Add file ids to a tag
+function addFileDetailsToTag(tagName, fileIds) {
+  const hashedid = hash(email + tagName.toLowerCase()); // Hash the email+tag name
+  const url = `${FIREBASE_URL}/tags/${hashedid}/.json?auth=${FIREBASE_SECRET}`;
+  
+  try {
+    // Check if the tag exists
+    var response = UrlFetchApp.fetch(url, {
+      method: 'GET',
+      contentType: "application/json"
+    });
+
+    var data = JSON.parse(response.getContentText());
+
+    if (data) {
+      // Tag exists, update the file ids
+      if (!Array.isArray(data.fileIds)) {
+        data.fileIds = [];
+      }
+      // data.fileIds = data.fileIds.concat(fileIds);
+      data.fileIds.push(fileIds)
+
+      var options = {
+        method: 'PUT',
+        contentType: 'application/json',
+        payload: JSON.stringify(data)
+      };
+
+      UrlFetchApp.fetch(url, options);
+    } else {
+      Logger.log('Tag does not exist: ' + tagName);
+    }
+  } catch (e) {
+    Logger.log('Error adding file ids to tag: ' + e.toString());
+  }
+}
+
+// Get the file id associated with a tag
+function getFileIDsByTag(tagName) {
+  const hashedid = hash(email + tagName.toLowerCase()); // Hash the email+tag name
+  const url = `${FIREBASE_URL}/tags/${hashedid}.json?auth=${FIREBASE_SECRET}`;
+  
+  try {
+    // Check if the tag exists
+    var response = UrlFetchApp.fetch(url, {
+      method: 'GET',
+      contentType: "application/json"
+    });
+
+    var data = JSON.parse(response.getContentText());
+
+    if (data) {
+      // Tag exists, return the file details
+      return {
+        fileIds: data.fileIds,
+      };
+    } else {
+      Logger.log('Tag does not exist: ' + tagName);
+      return null;
+    }
+  } catch (e) {
+    Logger.log('Error getting file details: ' + e.toString());
+    return null;
+  }
+}
+
+function removeFileDetailsFromTag(tagId, fileId){
+  // const hashedid = hash(email + tagId.toLowerCase()); // Hash the email+tag name
+  const hashedid = tagId;
+  const url = `${FIREBASE_URL}/tags/${hashedid}/fileIds.json?auth=${FIREBASE_SECRET}`;
+  // Logger.log(fileId)
+  try {
+    // Check if the tag exists
+    var response = UrlFetchApp.fetch(url, {
+      method: 'GET',
+      contentType: "application/json"
+    });
+
+    var data = JSON.parse(response.getContentText());
+    // Logger.log(data)
+
+    if (data) {
+      // Loop through all elements in the array of fileIds and remove the unwanted fileId
+      for (var i = data.length - 1; i >= 0; i--) {
+        if (data[i] === fileId) {
+          data.splice(i, 1);
+        }
+      }
+      // Logger.log(data)
+      
+      var options = {
+        method: 'PUT',
+        contentType: 'application/json',
+        payload: JSON.stringify(data)
+      };
+
+      UrlFetchApp.fetch(url, options);
+    } else {
+      Logger.log('Tag does not exist: ' + tagId);
+    }
+  } catch (e) {
+    Logger.log('Error removing file ids from tag: ' + e.toString());
+  }
+}
 
 function getSimplifiedMimeType(mimeType) {
   switch (mimeType) {
