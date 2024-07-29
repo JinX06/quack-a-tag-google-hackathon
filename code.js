@@ -1539,16 +1539,28 @@ function autoTagOne(e) {
   
   if (result.success) {
     const { generatedTags, matchedTags } = result;
+    generatedTagsArray = String(generatedTags).split(",");
+    matchedTagsArray = String(matchedTags).split(",");
     fileDetails += `Auto Tags: ${String(generatedTags)}\n\n`;
     fileDetails += `Matched Tags: ${String(matchedTags)}\n\n`;
     fileDetails += `Name: ${item.title}\n\n`;
     fileDetails += `File ID: ${item.id}\n\n`;
     fileDetails += `File Link: ${DriveApp.getFileById(item.id).getUrl()}\n\n`;
     fileDetails += `File type: ${getSimplifiedMimeType(item.mimeType)}\n\n`;
-  
-    Logger.log(fileDetails);
-    Logger.log(generatedTags);
-    Logger.log(matchedTags);
+    // Logger.log(`"list of gen tag:"${generatedTags}, type of the tag: ${typeof generatedTags}`);
+    // Logger.log(`"list of matched tag:"${matchedTags}, type of the tag: ${typeof matchedTags}`);
+    // Logger.log(`Array = ${genratedTagsArray}, Index 1 = ${genratedTagsArray[1]}`);
+    // Logger.log(matchedTagsArray);
+    // Logger.log(fileDetails);
+    // Logger.log(generatedTags);
+    // Logger.log(matchedTags);
+
+    for (var tag in generatedTagsArray) {
+      // addNewTagFile({formInputs: {addNewTagInput: [tag]}, parameters: {selectedItems: JSON.stringify(selectedItems)}});
+      Logger.log(generatedTagsArray[tag]);
+    }
+
+    
   } else {
     // Logger.log('Error detected, preparing to show notification');
     Logger.log(result.errorMessage);
