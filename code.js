@@ -1533,7 +1533,6 @@ function autoTagOne(e) {
   const selectedItems = e.drive.selectedItems;
   const item = selectedItems[0];
   
-  let fileDetails = '';
   
   const result = processThumbnailWithGemini(item.id);
   
@@ -1541,23 +1540,17 @@ function autoTagOne(e) {
     const { generatedTags, matchedTags } = result;
     generatedTagsArray = String(generatedTags).split(",");
     matchedTagsArray = String(matchedTags).split(",");
-    fileDetails += `Auto Tags: ${String(generatedTags)}\n\n`;
-    fileDetails += `Matched Tags: ${String(matchedTags)}\n\n`;
-    fileDetails += `Name: ${item.title}\n\n`;
-    fileDetails += `File ID: ${item.id}\n\n`;
-    fileDetails += `File Link: ${DriveApp.getFileById(item.id).getUrl()}\n\n`;
-    fileDetails += `File type: ${getSimplifiedMimeType(item.mimeType)}\n\n`;
-    // Logger.log(`"list of gen tag:"${generatedTags}, type of the tag: ${typeof generatedTags}`);
-    // Logger.log(`"list of matched tag:"${matchedTags}, type of the tag: ${typeof matchedTags}`);
-    // Logger.log(`Array = ${genratedTagsArray}, Index 1 = ${genratedTagsArray[1]}`);
-    // Logger.log(matchedTagsArray);
-    // Logger.log(fileDetails);
-    // Logger.log(generatedTags);
-    // Logger.log(matchedTags);
 
-    for (var tag in generatedTagsArray) {
-      // addNewTagFile({formInputs: {addNewTagInput: [tag]}, parameters: {selectedItems: JSON.stringify(selectedItems)}});
-      Logger.log(generatedTagsArray[tag]);
+    if (generatedTagsArray.length > 0) {
+      for (var tag in generatedTagsArray) {
+        addNewTagFileByIdAndTags(generatedTagsArray[tag], item.id);
+      }
+    }
+
+    if (matchedTagsArray.length > 0) {
+      for (var tag in matchedTagsArray) {
+        addNewTagFileByIdAndTags(matchedTagsArray[tag], item.id);
+      }
     }
 
     
@@ -1572,8 +1565,71 @@ function autoTagOne(e) {
   
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification()
-      .setText('Tag generated successfully!'))
+      .setText('Tag generated successfully!, Refresh the page if change has not been reflected properly.'))
+      .setNavigation(CardService.newNavigation().updateCard(onManagePage(selectedItems))) // Ensure this returns the updated card
     .build();
+}
+
+/**
+ * Function to add a new tag to a file directly (No UI)
+ */
+function addNewTagFileByIdAndTags(fileTag, fileId) {
+
+  var newTag = String(fileTag).trim();
+  var newTagId = hash(email + newTag.toLowerCase());
+
+  try {
+    var hashId = hash(email + fileId);
+    var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+
+    // Check if the ID exists
+    var response = UrlFetchApp.fetch(url, { method: 'GET' });
+    var data = JSON.parse(response.getContentText());
+
+    Logger.log(data);
+
+    if (data) {
+      // ID exists, add the new tag to the existing list
+      if (!Array.isArray(data.tags)) {
+        data.tags = [];
+      }
+
+      // Ensure no duplicates and avoid nested arrays
+      if (!data.tags.includes(newTagId)) {
+        data.tags.push(newTagId);
+      } else {
+        return CardService.newActionResponseBuilder()
+          .setNotification(CardService.newNotification()
+            .setText(`${newTag} already exists on this file.`))
+          .build();
+      }
+
+    } else {
+      // ID does not exist, create new data
+      data = {
+        gmail: email,
+        tags: [newTagId]
+      };
+    }
+
+    // Update the database
+    var options = {
+      method: 'PUT', // Use PUT to replace the entire data
+      contentType: 'application/json',
+      payload: JSON.stringify(data)
+    };
+
+    UrlFetchApp.fetch(url, options);
+
+    // Add new into database if it doesn't exist
+    addTagIfNotExists(newTag);
+
+    // Add URL Link to the tag database
+    addFileDetailsToTag(newTag, fileId);
+
+  } catch (e) {
+    Logger.log('Error adding new tag: ' + e.toString());
+  }
 }
 
 function callGeminiProVision(prompt, image, temperature=0) {
@@ -1613,8 +1669,8 @@ function callGeminiProVision(prompt, image, temperature=0) {
 }
 
 function testGeminiVision2(thumbnailBlob) {
-  var mylistofpreexistingtags = ["round", "brown", "music", "white", "Really Great Company", "Sigma company", "Best Company", "King George"]
-  var prompt = `You are an assistant that generates tags for images and text content so that the file with these contents will be easily findable by searching up the tags. When given an image or OCR output, you will first check a pre-existing list of tags and get the 5 most relevent tags which matches the context. If there are no matches found or if the pre-existing list of tags that matches the context does not add up to 5, you will auto-generate new tags to fill in the rest so the total tags from the list of pre-existing list and the generated tags list will add up to 5. These tags should behave like folder names, and should be created using the Tag What You See System, which is a principle where tags are based on the first few words that comes to mind when we would describe the file, and these words should be unique enough from each other so that it describes a large part of the file. On top of the Tag What You See System, the tags should also cover enough details to capture unique and useful features of the content so that those contents are easily searchable as part of the keywords, and you should prevent tags that are redundant, vague and general tags that doesnt help narrow down the search, or can be easily assumed from the other tags. For example, it is expected that an invoice would have content like total, money, and the company’s logo, so these descriptions as tags are redundant and can be easily covered with just the tag “Invoice”. Words like information or details to describe that the file contains content are too vague and general, and it is expected that a file would include some sort of information in the first place, so this naming behaviour should also be avoided. But the items that were bought in that invoice, along with the client’s name and client’s company would be unique across all types of invoices, and would be very useful and a common thing that users would want to search up for. The list of pre-existing tags is provided as ${mylistofpreexistingtags}.
+  var existingTags = getAllTagsName(); 
+  var prompt = `You are an assistant that generates tags for images and text content so that the file with these contents will be easily findable by searching up the tags. When given an image or OCR output, you will first check a pre-existing list of tags and get the 8 most relevent tags which matches the context. If there are no matches found or if the pre-existing list of tags that matches the context does not add up to 8, you will auto-generate new tags to fill in the rest so the total tags from the list of pre-existing list and the generated tags list will add up to 8. These tags should behave like folder names, and should be created using the Tag What You See System, which is a principle where tags are based on the first few words that comes to mind when we would describe the file, and these words should be unique enough from each other so that it describes a large part of the file. On top of the Tag What You See System, the tags should also cover enough details to capture unique and useful features of the content so that those contents are easily searchable as part of the keywords, and you should prevent tags that are redundant, vague and general tags that doesnt help narrow down the search, or can be easily assumed from the other tags. For example, it is expected that an invoice would have content like total, money, and the company’s logo, so these descriptions as tags are redundant and can be easily covered with just the tag “Invoice”. Words like information or details to describe that the file contains content are too vague and general, and it is expected that a file would include some sort of information in the first place, so this naming behaviour should also be avoided. But the items that were bought in that invoice, along with the client’s name and client’s company would be unique across all types of invoices, and would be very useful and a common thing that users would want to search up for. The list of pre-existing tags is provided as ${existingTags}.
 
   Your response must be a JSON object containing the following structure without any backticks.
 
@@ -1641,15 +1697,15 @@ function processThumbnailWithGemini(fileId) {
 
     // Handle TypeError for the thumbnail
     if (error instanceof TypeError) {
-      console.error('TypeError: Unable to retrieve the thumbnail:', error);
+      Logger.log('TypeError: Unable to retrieve the thumbnail:', error);
       errorMessage = 'This file is not compatible for auto search, please choose a file with a thumbnail displayed';
-    } else if (error.message && error.message.includes('429')) {
+    } else if (error.message.includes('429')) {
       // Handle rate limit 429 error for testGeminiVision2
-      console.error('Rate limit exceeded: ', error);
+      Logger.log('Rate limit exceeded: ', error);
       errorMessage = 'Too many requests. Please try again later.';
     } else {
       // Handle other errors
-      console.error('Error while processing the thumbnail:', error);
+      Logger.log('Error while processing the thumbnail:', error);
       errorMessage = 'An unexpected error occurred. Please refresh and try again.';
     }
 
@@ -1672,9 +1728,6 @@ function processGeminiResponse(geminiResponse) {
   return [generatedTags,matchedTags]
 
 }
-
-
-
 
 
 function getSimplifiedMimeType(mimeType) {
