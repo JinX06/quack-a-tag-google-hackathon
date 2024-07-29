@@ -1,5 +1,5 @@
 # GoogleHackathon
-This is a Google Drive Add On. 
+This is A Google Drive File Labelling Add-on developed by Team rojak. 
 
 ### Implementations
 
