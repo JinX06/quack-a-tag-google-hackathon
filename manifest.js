@@ -22,7 +22,7 @@
   "addOns": {
     "common": {
       "name": "🦆 Quack-a-Tag! 🏷️",
-      "logoUrl": "https://media.discordapp.net/attachments/675367478443900951/1266848149088239806/logo_coloured.png?ex=66a6a3c7&is=66a55247&hm=9f35c27aca5e8c88a6280679f2329b3171a329bb678dff044034ba5c26012371&=&format=webp&quality=lossless&width=467&height=467",
+      "logoUrl": "https://raw.githubusercontent.com/enting827/GoogleHackathon/main/logo%20coloured.png?token=GHSAT0AAAAAACVL7D7P7MO3VHVJ7YRPZPFSZVHTYIQ",
       "useLocaleFromApp": true,
       "homepageTrigger": {
         "runFunction": "onHomepage"
