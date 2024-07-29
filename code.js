@@ -1330,67 +1330,76 @@ function showLabelContentCard() {}
 // Search for all files associated with the tag
 function confirmSearch(e) {
   if (!e.formInputs.file_search) {
-      return CardService.newActionResponseBuilder()
-            .setNotification(CardService.newNotification()
-              .setText('Please enter a tag to search.'))
-            .build();
-    }
+    return CardService.newActionResponseBuilder()
+      .setNotification(CardService.newNotification()
+        .setText('Please enter tags to search.'))
+      .build();
+  }
 
   var searchTags = e.formInputs.file_search[0].split(',').map(tag => tag.trim());
-  var fileIDJson = getFileIDsByTag(String(searchTags));
-  Logger.log(fileIDJson)
+  
+  // Initialize a map to hold file IDs for each tag
+  var fileIdMap = new Map();
 
-  if (fileIDJson == null) {
+  // Get file IDs for each tag
+  searchTags.forEach(tag => {
+    var fileIDJson = getFileIDsByTag(tag);
+    if (fileIDJson && fileIDJson.fileIds) {
+      fileIDJson.fileIds.forEach(fileId => {
+        if (fileIdMap.has(fileId)) {
+          fileIdMap.set(fileId, fileIdMap.get(fileId) + 1);
+        } else {
+          fileIdMap.set(fileId, 1);
+        }
+      });
+    }
+  });
+
+  // Find common file IDs
+  var commonFileIds = Array.from(fileIdMap.keys()).filter(fileId => fileIdMap.get(fileId) === searchTags.length);
+  
+  if (commonFileIds.length === 0) {
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText('No files found with the tags provided.'))
+        .setText('No files found with all the tags provided.'))
       .setNavigation(CardService.newNavigation().updateCard(onSearchPage()))
       .build();
   }
-  else if(fileIDJson.fileIds == null){
-    return CardService.newActionResponseBuilder()
-      .setNotification(CardService.newNotification()
-        .setText('No files found with the tags provided.'))
-      .setNavigation(CardService.newNavigation().updateCard(onSearchPage()))
-      .build();
-  }
-  else{
-    // Convert fileIDs to an array
-    var fileIDArray = fileIDJson.fileIds;
-    
-    // Initialize arrays to store filenames and URLs
-    var fileNameArray = [];
-    var fileUrlArray = [];
 
-    // Iterate over fileIDArray
-    fileIDArray.forEach(fileID => {
-      // Get the file using the fileId
+  // Initialize arrays to store filenames and URLs
+  var fileNameArray = [];
+  var fileUrlArray = [];
+
+  // Retrieve file details for the common file IDs
+  commonFileIds.forEach(fileID => {
+    try {
       const file = DriveApp.getFileById(fileID.trim());
-
-      // Append the filename and file URL to the respective arrays
       fileNameArray.push(file.getName());
       fileUrlArray.push(file.getUrl());
-    });
+    } catch (error) {
+      Logger.log('Error retrieving file with ID: ' + fileID);
+    }
+  });
 
-    // Create a ButtonSet
-    var buttonSet = CardService.newButtonSet();
-    
-    // Iterate over the fileUrl array and create a button for each URL
-    fileUrlArray.forEach((url, index) => {
-      var name = fileNameArray[index]; // Get the corresponding file name
-      var button = CardService.newTextButton()
-        .setText(name) // Set the button text to the file name
-        .setOpenLink(
-          CardService.newOpenLink()
-            .setUrl(url) // Set the URL for the button
-            .setOpenAs(CardService.OpenAs.FULL_SIZE))
-        .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
-        .setBackgroundColor('#635A7A'); // Set your desired background color
-    
-      buttonSet.addButton(button);
-    });
-    
-    // Create a card section and add the ButtonSet to it
+  // Create a ButtonSet
+  var buttonSet = CardService.newButtonSet();
+
+  // Iterate over the fileUrl array and create a button for each URL
+  fileUrlArray.forEach((url, index) => {
+    var name = fileNameArray[index]; // Get the corresponding file name
+    var button = CardService.newTextButton()
+      .setText(name) // Set the button text to the file name
+      .setOpenLink(
+        CardService.newOpenLink()
+          .setUrl(url) // Set the URL for the button
+          .setOpenAs(CardService.OpenAs.FULL_SIZE))
+      .setTextButtonStyle(CardService.TextButtonStyle.FILLED)
+      .setBackgroundColor('#635A7A'); // Set your desired background color
+  
+    buttonSet.addButton(button);
+  });
+
+  // Create a card section and add the ButtonSet to it
     var resultsSection = CardService.newCardSection()
       .addWidget(spacing)
       .addWidget(CardService.newTextParagraph().setText('Search Results 🔎'))
@@ -1419,9 +1428,6 @@ function confirmSearch(e) {
     return CardService.newActionResponseBuilder()
       .setNavigation(CardService.newNavigation().updateCard(updatedCard))
       .build();
-}
-
-
 }
 
 // Add file ids to a tag
