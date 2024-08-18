@@ -1056,13 +1056,15 @@ function addNewTagFile(e) {
   var newTagObject = e.formInputs.addNewTagInput[0];
   var newTag = String(newTagObject).trim()
   var newTagId = hash(email+newTag.toLowerCase())
+var tagExist = false
 
   //Loop for every selected items/files
   try {
-    selectedItems.forEach (file =>{
+    for (var i = 0; i < selectedItems.length; i++) {
+      var file = selectedItems[i];
       var fileId = file.id;
       var hashId = hash(email + fileId);
-      var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+      var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
 
       // Check if the ID exists
       var response = UrlFetchApp.fetch(url, { method: 'GET' });
@@ -1080,16 +1082,15 @@ function addNewTagFile(e) {
         if (!data.tags.includes(newTagId)) {
           data.tags.push(newTagId);
         } else{
-          return CardService.newActionResponseBuilder()
-            .setNotification(CardService.newNotification()
-              .setText(`${newTag} already exists on this file.`))
-            .build();
+          if (selectedItems.length === 1){
+            tagExist = true;
+          }
+          break;
         }
         
       } else {
         // ID does not exist, create new data
         data = {
-          gmail: email,
           tags: [newTagId]
         };
       }
@@ -1105,7 +1106,14 @@ function addNewTagFile(e) {
 
       // Add URL Link to the tag database
       addFileDetailsToTag(newTag, fileId);
-    })
+    }
+
+    if (tagExist){
+      return CardService.newActionResponseBuilder()
+            .setNotification(CardService.newNotification()
+              .setText(`${newTag} already exists on this file.`))
+            .build();
+    }
 
     // Refresh page by returning the updated card
     return CardService.newActionResponseBuilder()
@@ -1424,7 +1432,7 @@ function confirmSearch(e) {
 // Add file ids to a tag
 function addFileDetailsToTag(tagName, fileId) {
   const hashedid = hash(email + tagName.toLowerCase()); // Hash the email+tag name
-  const url = `${FIREBASE_URL}/tags/${hashedid}/.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags/${hashedid}/.json?auth=${FIREBASE_SECRET}`;
   
   try {
     // Check if the tag exists
