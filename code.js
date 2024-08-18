@@ -1422,7 +1422,7 @@ function confirmSearch(e) {
 }
 
 // Add file ids to a tag
-function addFileDetailsToTag(tagName, fileIds) {
+function addFileDetailsToTag(tagName, fileId) {
   const hashedid = hash(email + tagName.toLowerCase()); // Hash the email+tag name
   const url = `${FIREBASE_URL}/tags/${hashedid}/.json?auth=${FIREBASE_SECRET}`;
   
@@ -1441,7 +1441,7 @@ function addFileDetailsToTag(tagName, fileIds) {
         data.fileIds = [];
       }
       // data.fileIds = data.fileIds.concat(fileIds);
-      data.fileIds.push(fileIds)
+      data.fileIds.push(fileId)
 
       var options = {
         method: 'PUT',
