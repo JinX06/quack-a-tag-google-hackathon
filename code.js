@@ -1226,7 +1226,7 @@ function removeFileTag(e) {
 
       // Check if updatedTags is empty, if so, delete the document
       if (updatedTags.length === 0) {
-        var deleteUrl = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+        var deleteUrl = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
         var deleteOptions = {
           method: 'DELETE'
         };
@@ -1240,7 +1240,7 @@ function removeFileTag(e) {
               tags: updatedTags
             };
 
-            var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+            var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
             var options = {
               method: 'PUT',
               contentType: 'application/json',
@@ -1497,7 +1497,7 @@ function getFileIDsByTag(tagName) {
 function removeFileDetailsFromTag(tagId, fileId){
   // const hashedid = hash(email + tagId.toLowerCase()); // Hash the email+tag name
   const hashedid = tagId;
-  const url = `${FIREBASE_URL}/tags/${hashedid}/fileIds.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags/${hashedid}/fileIds.json?auth=${FIREBASE_SECRET}`;
   // Logger.log(fileId)
   try {
     // Check if the tag exists
