@@ -908,22 +908,9 @@ function getSharedTags(selectedItems) {
 
 /**
  * Function to retrieve data from fileTags Firebase Realtime Database.
- * Return data that macthes gmail(user) and file id (for a file only)
- * For manage page, Can be use for 1 file / multiple files selected 
- *  "fileTags": {
-    "hash(gmail+fileid)": {
-      "gmail": "gmail",
-      "fileid": "hash(fileid)",
-      "tags": [
-        "id1",
-        "Iid2",
-        "id3"
-      ]
-    }
-  }
  */
 function getFileTagsDataById(fileId) {
-  const url = `${FIREBASE_URL}/fileTags/${hash(email+fileId)}.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hash(email+fileId)}.json?auth=${FIREBASE_SECRET}`;
 
   const response = UrlFetchApp.fetch(url, {
     method: "GET",
@@ -941,7 +928,7 @@ function getFileTagsDataById(fileId) {
  * Function to retrieve data from tags Firebase Realtime Database with Tag ID
  */
 function getTagDetails(tagId) {
-  const url = `${FIREBASE_URL}/tags/${tagId}.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags/${tagId}.json?auth=${FIREBASE_SECRET}`;
 
   const response = UrlFetchApp.fetch(url, {
     method: "GET",
