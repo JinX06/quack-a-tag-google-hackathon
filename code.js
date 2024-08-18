@@ -1103,9 +1103,6 @@ function addNewTagFile(e) {
 
       UrlFetchApp.fetch(url, options);
 
-      // Add new into database if it doesnt exist
-      addTagIfNotExists(newTag)
-
       // Add URL Link to the tag database
       addFileDetailsToTag(newTag, fileId);
     })
@@ -1454,7 +1451,19 @@ function addFileDetailsToTag(tagName, fileIds) {
 
       UrlFetchApp.fetch(url, options);
     } else {
-      Logger.log('Tag does not exist: ' + tagName);
+      // If tag doesnt exists, add new tag data
+      var newTagData = {
+        name: tagName,
+        fileIds: [fileId]
+      };
+
+      var options = {
+        method: 'PUT', // Use PUT to create or replace the tag data
+        contentType: 'application/json',
+        payload: JSON.stringify(newTagData)
+      };
+
+      UrlFetchApp.fetch(url, options);
     }
   } catch (e) {
     Logger.log('Error adding file ids to tag: ' + e.toString());
@@ -1624,9 +1633,6 @@ function addNewTagFileByIdAndTags(fileTag, fileId) {
     };
 
     UrlFetchApp.fetch(url, options);
-
-    // Add new into database if it doesn't exist
-    addTagIfNotExists(newTag);
 
     // Add URL Link to the tag database
     addFileDetailsToTag(newTag, fileId);
