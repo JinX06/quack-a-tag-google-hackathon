@@ -531,7 +531,7 @@ function onSearchPage() {
   var fileSearchInput = CardService.newTextInput()
     .setFieldName('file_search')
     .setTitle("Insert tags to search for files 🏷️")
-    .setHint(' "E.g. T, Budget, Sales..." ');
+    .setHint(' "Use commas "," to seperate and search multiple tags" ');
   
   // Set suggestions only if there are tags in library
   var allTags = getAllTagsName();
@@ -1345,7 +1345,7 @@ function confirmSearch(e) {
   if (commonFileIds.length === 0) {
     return CardService.newActionResponseBuilder()
       .setNotification(CardService.newNotification()
-        .setText('No files found with all the tags provided.'))
+        .setText('No files found with the tag(s) provided.'))
       .setNavigation(CardService.newNavigation().updateCard(onSearchPage()))
       .build();
   }
@@ -1446,8 +1446,8 @@ function addFileDetailsToTag(tagName, fileId) {
     } else {
       // If tag doesnt exists, add new tag data
       var newTagData = {
-        name: tagName,
-        fileIds: [fileId]
+        fileIds: [fileId],
+        name: tagName
       };
 
       var options = {
@@ -1466,7 +1466,7 @@ function addFileDetailsToTag(tagName, fileId) {
 // Get the file id associated with a tag
 function getFileIDsByTag(tagName) {
   const hashedid = hash(email + tagName.toLowerCase()); // Hash the email+tag name
-  const url = `${FIREBASE_URL}/tags/${hashedid}.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags/${hashedid}.json?auth=${FIREBASE_SECRET}`;
   
   try {
     // Check if the tag exists
@@ -1586,7 +1586,7 @@ function addNewTagFileByIdAndTags(fileTag, fileId) {
 
   try {
     var hashId = hash(email + fileId);
-    var url = `${FIREBASE_URL}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+    var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
 
     // Check if the ID exists
     var response = UrlFetchApp.fetch(url, { method: 'GET' });
@@ -1613,7 +1613,6 @@ function addNewTagFileByIdAndTags(fileTag, fileId) {
     } else {
       // ID does not exist, create new data
       data = {
-        gmail: email,
         tags: [newTagId]
       };
     }
