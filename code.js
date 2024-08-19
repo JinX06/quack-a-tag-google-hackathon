@@ -964,7 +964,7 @@ function getSortedTags(tagIds) {
  * Function to retrieve all tag data from Firebase Realtime Database for the current user.
  */
 function getAllTagsData(){
-  const url = `${FIREBASE_URL}/tags.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags.json?auth=${FIREBASE_SECRET}`;
 
   try {
     const response = UrlFetchApp.fetch(url, {
@@ -977,9 +977,7 @@ function getAllTagsData(){
     // Filter tags for the current user
     const userTags = [];
     for (const key in data) {
-      if (data[key].gmail === email) {
-        userTags.push({ id: key, name: data[key].name });
-      }
+      userTags.push({ id: key, name: data[key].name });
     }
 
     // Sort tags by name
