@@ -274,14 +274,21 @@ function removeTag (e){
 
 
   // Remove tags from the Tag database
-  tagsId.forEach(id =>{
-    removeTagFromTagDB(id);
-  });
+  var success = true
+  success = removeTagsFromTagDB(tagsId);
 
 
-// Remove tags for every files
-  removeTagsFromUserFiles(tagsId);
+  // Remove tags for every files
+  success = removeTagsFromUserFiles(tagsId);
 
+
+  if (!success){
+    return CardService.newActionResponseBuilder()
+    .setNotification(CardService.newNotification()
+      .setText(`${tagsName.join(', ')} removed unsuccessfully.`))
+    .setNavigation(CardService.newNavigation().updateCard(onLibraryPage())) 
+    .build();
+  }
 
   return CardService.newActionResponseBuilder()
     .setNotification(CardService.newNotification()
@@ -293,19 +300,25 @@ function removeTag (e){
 /**
  * Function to remove tag from the Tag database
  */
-function removeTagFromTagDB(tagId) {
-  const url = `${FIREBASE_URL}/tags/${tagId}.json?auth=${FIREBASE_SECRET}`;
+function removeTagsFromTagDB(tagIds) {
+  const updates = {};
+  tagIds.forEach(id => {
+    updates[`/tags/${id}`] = null; // Setting a path to `null` removes it in Firebase
+  });
+  
+  const url = `${FIREBASE_URL}/${hash(email)}.json?auth=${FIREBASE_SECRET}`;
   
   try {
     const options = {
-      method: 'DELETE'
+      method: 'PATCH', // Use PATCH to update multiple paths at once
+      contentType: 'application/json',
+      payload: JSON.stringify(updates)
     };
     UrlFetchApp.fetch(url, options);
-    return true; //indicate success
-
+    return true; // indicate success
   } catch (e) {
-    Logger.log('Error removing tag: ' + e.toString());
-    return false; //indicate failure
+    Logger.log('Error removing tags: ' + e.toString());
+    return false; // indicate failure
   }
 }
 
@@ -314,7 +327,7 @@ function removeTagFromTagDB(tagId) {
  * @param - list of tag id
  */
 function removeTagsFromUserFiles(tagsId) {
-  const url = `${FIREBASE_URL}/fileTags.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/fileTags.json?auth=${FIREBASE_SECRET}`;
   
   try {
     const response = UrlFetchApp.fetch(url, {
@@ -323,15 +336,15 @@ function removeTagsFromUserFiles(tagsId) {
     });
     
     const fileTagsData = JSON.parse(response.getContentText());
-    const userFileTags = Object.entries(fileTagsData).filter(([key, value]) => value.gmail === email);
+    const fileTags = Object.entries(fileTagsData);
 
-    userFileTags.forEach(([key, fileData]) => {
+    fileTags.forEach(([key, fileData]) => {
       const updatedTags = fileData.tags.filter(tagId => !tagsId.includes(tagId));
 
       
       // Check if updatedTags is empty, if so, delete the document
       if (updatedTags.length === 0) {
-        var deleteUrl = `${FIREBASE_URL}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
+        var deleteUrl = `${FIREBASE_URL}/${hash(email)}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
         var deleteOptions = {
           method: 'DELETE'
         };
@@ -341,11 +354,10 @@ function removeTagsFromUserFiles(tagsId) {
       // Update the database with the new list of tags
       else{
         var updatedData = {
-              gmail: email,
               tags: updatedTags
             };
 
-            var url = `${FIREBASE_URL}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
+            var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${key}.json?auth=${FIREBASE_SECRET}`;
             var options = {
               method: 'PUT',
               contentType: 'application/json',
@@ -356,9 +368,12 @@ function removeTagsFromUserFiles(tagsId) {
       }
 
     });
+
+    return true; // indicate success
     
   } catch (e) {
     Logger.log('Error removing tags from files: ' + e.toString());
+    return false; // indicate failure
   }
 }
 
@@ -449,7 +464,7 @@ function renameTags (e){
  * Rename the tags in the Tags collection
  */
 function updateTagInTagsCollection(oldId, newId, newName) {
-  const url = `${FIREBASE_URL}/tags/${oldId}.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags/${oldId}.json?auth=${FIREBASE_SECRET}`;
   
   // Fetch existing tag data
   const response = UrlFetchApp.fetch(url, { method: "GET" });
@@ -458,12 +473,11 @@ function updateTagInTagsCollection(oldId, newId, newName) {
   // Update tag data
   const updatedTagData = {
     ...tagData,
-    gmail: email,
     name: newName
   };
 
   // Save new tag data
-  const updateUrl = `${FIREBASE_URL}/tags/${newId}.json?auth=${FIREBASE_SECRET}`;
+  const updateUrl = `${FIREBASE_URL}/${hash(email)}/tags/${newId}.json?auth=${FIREBASE_SECRET}`;
   UrlFetchApp.fetch(updateUrl, {
     method: "PUT",
     contentType: "application/json",
@@ -480,7 +494,7 @@ function updateTagInTagsCollection(oldId, newId, newName) {
  */
 function updateTagInFileTagsCollection(oldId, newId) {
   // Fetch all file tags
-  const url = `${FIREBASE_URL}/fileTags.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/fileTags.json?auth=${FIREBASE_SECRET}`;
   const response = UrlFetchApp.fetch(url, { method: "GET" });
   const fileTags = JSON.parse(response.getContentText());
 
@@ -489,22 +503,20 @@ function updateTagInFileTagsCollection(oldId, newId) {
     if (fileTags.hasOwnProperty(fileId)) {
       const fileTagData = fileTags[fileId];
 
-      // Check if the file belongs to the specified email
-      if (fileTagData.gmail === email) {
-        // Update tag references
-        const updatedTags = fileTagData.tags.map(tagId => tagId === oldId ? newId : tagId);
+      // Update tag references
+      const updatedTags = fileTagData.tags.map(tagId => tagId === oldId ? newId : tagId);
 
-        // Save updated file tag data
-        const updateUrl = `${FIREBASE_URL}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
-        UrlFetchApp.fetch(updateUrl, {
-          method: "PUT",
-          contentType: "application/json",
-          payload: JSON.stringify({
-            ...fileTagData,
-            tags: updatedTags
-          })
-        });
-      }
+      // Save updated file tag data
+      const updateUrl = `${FIREBASE_URL}/${hash(email)}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
+      UrlFetchApp.fetch(updateUrl, {
+        method: "PUT",
+        contentType: "application/json",
+        payload: JSON.stringify({
+          ...fileTagData,
+          tags: updatedTags
+        })
+      });
+      
     }
   }
 }
@@ -1124,7 +1136,7 @@ var tagExist = false
  */
 function addTagIfNotExists(tagName) {
   const hashedid= hash(email+tagName.toLowerCase()); // Hash the email+tag name
-  const url = `${FIREBASE_URL}/tags/${hashedid}.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/tags/${hashedid}.json?auth=${FIREBASE_SECRET}`;
   
   try {
     // Check if the tag exists
@@ -1134,7 +1146,6 @@ function addTagIfNotExists(tagName) {
     if (!data) {
       // Tag does not exist, add it
       var newTagData = {
-        gmail: email,
         name: tagName
       };
 
