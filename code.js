@@ -54,6 +54,7 @@ function onHelpAction(e) {
  */
 function onInstall(e) {
   onHomepage(e);
+  createTimeDrivenTrigger();
 }
 
 
@@ -922,7 +923,7 @@ function getSharedTags(selectedItems) {
  * Function to retrieve data from fileTags Firebase Realtime Database.
  */
 function getFileTagsDataById(fileId) {
-  const url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hash(email+fileId)}.json?auth=${FIREBASE_SECRET}`;
+  const url = `${FIREBASE_URL}/${hash(email)}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
 
   const response = UrlFetchApp.fetch(url, {
     method: "GET",
@@ -1060,8 +1061,7 @@ var tagExist = false
     for (var i = 0; i < selectedItems.length; i++) {
       var file = selectedItems[i];
       var fileId = file.id;
-      var hashId = hash(email + fileId);
-      var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+      var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
 
       // Check if the ID exists
       var response = UrlFetchApp.fetch(url, { method: 'GET' });
@@ -1219,7 +1219,6 @@ function removeFileTag(e) {
 
     selectedItems.forEach(file=>{
       var fileId = file.id;
-      var hashId = hash(email + fileId);
       // Fetch the current tags for the file
       var fileTagsData = getFileTagsDataById(fileId);
       
@@ -1235,7 +1234,7 @@ function removeFileTag(e) {
 
       // Check if updatedTags is empty, if so, delete the document
       if (updatedTags.length === 0) {
-        var deleteUrl = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+        var deleteUrl = `${FIREBASE_URL}/${hash(email)}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
         var deleteOptions = {
           method: 'DELETE'
         };
@@ -1249,7 +1248,7 @@ function removeFileTag(e) {
               tags: updatedTags
             };
 
-            var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+            var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
             var options = {
               method: 'PUT',
               contentType: 'application/json',
@@ -1596,8 +1595,7 @@ function addNewTagFileByIdAndTags(fileTag, fileId) {
   var newTagId = hash(email + newTag.toLowerCase());
 
   try {
-    var hashId = hash(email + fileId);
-    var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${hashId}.json?auth=${FIREBASE_SECRET}`;
+    var url = `${FIREBASE_URL}/${hash(email)}/fileTags/${fileId}.json?auth=${FIREBASE_SECRET}`;
 
     // Check if the ID exists
     var response = UrlFetchApp.fetch(url, { method: 'GET' });
