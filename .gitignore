@@ -1,0 +1,22 @@
+.env
+.env.*
+!.env.example
+
+# Local Apps Script and Google credentials
+.clasp.json
+credentials.json
+client_secret*.json
+service-account*.json
+*service_account*.json
+*.pem
+*.p12
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+
+# Local public export repo generated from this private source
+portfolio-export/
+history-export/
+history-export-full/

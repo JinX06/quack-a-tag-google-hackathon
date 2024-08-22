@@ -2,7 +2,7 @@
 function createTimeDrivenTrigger() {
   ScriptApp.newTrigger('checkFilesInDrive')
     .timeBased()
-    .everyMonths(1) // Set the trigger to run every 30 days
+    .everyMonths(1) // Set the trigger to run every month
     .create();
 }
 
