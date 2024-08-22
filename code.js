@@ -1643,7 +1643,7 @@ function addNewTagFileByIdAndTags(fileTag, fileId) {
   }
 }
 
-function callGeminiProVision(prompt, image, temperature=0) {
+function callGeminiAPI(prompt, image, temperature=0) {
   const imageData = Utilities.base64Encode(image.getAs('image/png').getBytes());
 
   const payload = {
@@ -1679,7 +1679,7 @@ function callGeminiProVision(prompt, image, temperature=0) {
   return content;
 }
 
-function testGeminiVision2(thumbnailBlob) {
+function callGeminiVision(thumbnailBlob) {
   var existingTags = getAllTagsName(); 
   var prompt = `You are an assistant that generates tags for images and text content so that the file with these contents will be easily findable by searching up the tags. When given an image or OCR output, you will first check a pre-existing list of tags and get the 5 most relevant tags which matches the context. If there are no matches found or if the pre-existing list of tags that matches the context does not add up to 5, you will auto-generate new tags to fill in the rest so the total tags from the list of pre-existing list and the generated tags list will add up to 5. These tags should behave like folder names, and should be created using the Tag What You See System, which is a principle where tags are based on the first few words that comes to mind when we would describe the file, and these words should be unique enough from each other so that it describes a large part of the file. On top of the Tag What You See System, the tags should also cover enough details to capture unique and useful features of the content so that those contents are easily searchable as part of the keywords, and you should prevent tags that are redundant, vague and general tags that doesn't help narrow down the search, or can be easily assumed from the other tags. For example, it is expected that an invoice would have content like total, money, and the company’s logo, so these descriptions as tags are redundant and can be easily covered with just the tag “Invoice”. Words like information or details to describe that the file contains content are too vague and general, and it is expected that a file would include some sort of information in the first place, so this naming behaviour should also be avoided. But the items that were bought in that invoice, along with the client’s name and client’s company would be unique across all types of invoices, and would be very useful and a common thing that users would want to search up for. The list of pre-existing tags is provided as ${existingTags}.
 
@@ -1688,7 +1688,7 @@ function testGeminiVision2(thumbnailBlob) {
   matchedTags: A list of tags from the pre-existing list that match the context (can be empty if no matches are found).
   generatedTags: A list of newly generated tags — created following the Tag What You See System, ensures that the tags are useful and unique, avoids general, vague and redundant terms — if no matches are found from the pre-existing list (omit if matches are found).`
 
-  const output = callGeminiProVision(prompt, thumbnailBlob);
+  const output = callGeminiAPI(prompt, thumbnailBlob);
 
   return output;
 }
@@ -1698,7 +1698,7 @@ function processThumbnailWithGemini(fileId) {
   try {
     const thumbnailBlob = DriveApp.getFileById(fileId).getThumbnail();
 
-    const response = testGeminiVision2(thumbnailBlob);
+    const response = callGeminiVision(thumbnailBlob);
 
     const [generatedTags, matchedTags] = processGeminiResponse(response);
     return { success: true, generatedTags, matchedTags };
@@ -1711,7 +1711,7 @@ function processThumbnailWithGemini(fileId) {
       Logger.log('TypeError: Unable to retrieve the thumbnail:', error);
       errorMessage = 'This file is not compatible for auto search, please choose a file with a thumbnail displayed';
     } else if (error.message.includes('429')) {
-      // Handle rate limit 429 error for testGeminiVision2
+      // Handle rate limit 429 error for callGeminiVision
       Logger.log('Rate limit exceeded: ', error);
       errorMessage = 'Too many requests. Please try again later.';
     } else {
